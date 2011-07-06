@@ -1,0 +1,73 @@
+2009-12-03  Alan Modra  <amodra@bigpond.net.au>
+
+	PR ld/11047
+	* elf32-ppc.c (ppc_elf_relocate_section): Delete __tls_get_addr
+	symbol reference from relocs belonging to calls that are
+	optimized away.
+	* elf64-ppc.c (ppc64_elf_relocate_section): Likewise.
+
+--- bfd/elf32-ppc.c	21 Sep 2009 11:55:16 -0000	1.267.2.2
++++ bfd/elf32-ppc.c	3 Dec 2009 08:32:06 -0000	1.267.2.3
+@@ -6914,9 +6914,7 @@ ppc_elf_relocate_section (bfd *output_bf
+ 		  insn1 |= 32 << 26;	/* lwz */
+ 		  if (offset != (bfd_vma) -1)
+ 		    {
+-		      rel[1].r_info
+-			= ELF32_R_INFO (ELF32_R_SYM (rel[1].r_info),
+-					R_PPC_NONE);
++		      rel[1].r_info = ELF32_R_INFO (STN_UNDEF, R_PPC_NONE);
+ 		      insn2 = 0x7c631214;	/* add 3,3,2 */
+ 		      bfd_put_32 (output_bfd, insn2, contents + offset);
+ 		    }
+@@ -6990,8 +6988,7 @@ ppc_elf_relocate_section (bfd *output_bf
+ 	      bfd_put_32 (output_bfd, insn2, contents + offset);
+ 	      /* Zap the reloc on the _tls_get_addr call too.  */
+ 	      BFD_ASSERT (offset == rel[1].r_offset);
+-	      rel[1].r_info = ELF32_R_INFO (ELF32_R_SYM (rel[1].r_info),
+-					    R_PPC_NONE);
++	      rel[1].r_info = ELF32_R_INFO (STN_UNDEF, R_PPC_NONE);
+ 	    }
+ 	  break;
+ 
+@@ -7020,8 +7017,7 @@ ppc_elf_relocate_section (bfd *output_bf
+ 			  contents + rel->r_offset - d_offset);
+ 	      /* Zap the reloc on the _tls_get_addr call too.  */
+ 	      BFD_ASSERT (rel->r_offset - d_offset == rel[1].r_offset);
+-	      rel[1].r_info = ELF32_R_INFO (ELF32_R_SYM (rel[1].r_info),
+-					    R_PPC_NONE);
++	      rel[1].r_info = ELF32_R_INFO (STN_UNDEF, R_PPC_NONE);
+ 	      rel--;
+ 	      continue;
+ 	    }
+--- bfd/elf64-ppc.c	21 Sep 2009 11:55:16 -0000	1.299.2.2
++++ bfd/elf64-ppc.c	3 Dec 2009 08:32:06 -0000	1.299.2.3
+@@ -11129,8 +11129,7 @@ ppc64_elf_relocate_section (bfd *output_
+ 		  insn1 |= 58 << 26;	/* ld */
+ 		  insn2 = 0x7c636a14;	/* add 3,3,13 */
+ 		  if (offset != (bfd_vma) -1)
+-		    rel[1].r_info = ELF64_R_INFO (ELF64_R_SYM (rel[1].r_info),
+-						  R_PPC64_NONE);
++		    rel[1].r_info = ELF64_R_INFO (STN_UNDEF, R_PPC64_NONE);
+ 		  if ((tls_mask & TLS_EXPLICIT) == 0)
+ 		    r_type = (((r_type - (R_PPC64_GOT_TLSGD16 & 3)) & 3)
+ 			      + R_PPC64_GOT_TPREL16_DS);
+@@ -11229,8 +11228,7 @@ ppc64_elf_relocate_section (bfd *output_
+ 	      rel->r_info = ELF64_R_INFO (r_symndx, r_type);
+ 	      /* Zap the reloc on the _tls_get_addr call too.  */
+ 	      BFD_ASSERT (offset == rel[1].r_offset);
+-	      rel[1].r_info = ELF64_R_INFO (ELF64_R_SYM (rel[1].r_info),
+-					    R_PPC64_NONE);
++	      rel[1].r_info = ELF64_R_INFO (STN_UNDEF, R_PPC64_NONE);
+ 	      insn3 = bfd_get_32 (output_bfd,
+ 				  contents + offset + 4);
+ 	      if (insn3 == NOP
+@@ -11275,8 +11273,7 @@ ppc64_elf_relocate_section (bfd *output_
+ 	      rel->r_offset = offset + d_offset;
+ 	      /* Zap the reloc on the _tls_get_addr call too.  */
+ 	      BFD_ASSERT (offset == rel[1].r_offset);
+-	      rel[1].r_info = ELF64_R_INFO (ELF64_R_SYM (rel[1].r_info),
+-					    R_PPC64_NONE);
++	      rel[1].r_info = ELF64_R_INFO (STN_UNDEF, R_PPC64_NONE);
+ 	      insn2 = 0x38630000;	/* addi 3,3,0 */
+ 	      insn3 = bfd_get_32 (output_bfd,
+ 				  contents + offset + 4);

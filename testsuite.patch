@@ -1,0 +1,60 @@
+Index: binutils-2.20.51.0.2/ld/testsuite/ld-elfvsb/elfvsb.exp
+===================================================================
+--- binutils-2.20.51.0.2.orig/ld/testsuite/ld-elfvsb/elfvsb.exp
++++ binutils-2.20.51.0.2/ld/testsuite/ld-elfvsb/elfvsb.exp
+@@ -273,6 +273,10 @@ proc visibility_run {visibility} {
+ 	    if { ![istarget hppa*64*-*-linux*] } {
+ 		setup_xfail "hppa*-*-linux*"
+ 	    }
++	    if { [ string match $visibility "hidden_weak" ]
++		 || [ string match $visibility "protected_weak" ] } {
++		setup_xfail "s390-*-linux*"
++	    }
+ 
+ 	    visibility_test $visibility vnp "visibility ($visibility) (non PIC)" mainnp.o sh1np.o sh2np.o elfvsb
+ 
+@@ -377,6 +381,10 @@ proc visibility_run {visibility} {
+ 		if { ![istarget hppa*64*-*-linux*] } {
+ 		    setup_xfail "hppa*-*-linux*"
+ 		}
++		if { [ string match $visibility "hidden_weak" ]
++		     || [ string match $visibility "protected_weak" ] } {
++		    setup_xfail "s390-*-linux*"
++		}
+ 
+ 		visibility_test $visibility vmpnp "visibility ($visibility) (PIC main, non PIC so)" mainp.o sh1np.o sh2np.o elfvsb
+ 	    }
+Index: binutils-2.20.51.0.2/ld/testsuite/ld-srec/srec.exp
+===================================================================
+--- binutils-2.20.51.0.2.orig/ld/testsuite/ld-srec/srec.exp
++++ binutils-2.20.51.0.2/ld/testsuite/ld-srec/srec.exp
+@@ -370,6 +370,9 @@ setup_xfail "score-*-*"
+ # The S-record linker doesn't support Blackfin ELF FDPIC ABI.
+ setup_xfail "bfin-*-linux-uclibc"
+ 
++# The S-record linker doesn't handle overlapping OPD
++setup_xfail "powerpc64-*-*"
++
+ run_srec_test $test1 "tmpdir/sr1.o tmpdir/sr2.o"
+ 
+ # Now try linking a C++ program with global constructors and
+@@ -401,5 +404,6 @@ setup_xfail "ia64-*-*"
+ setup_xfail "*-*-cygwin*" "*-*-mingw*" "*-*-pe*" "*-*-winnt*"
+ setup_xfail "score-*-*"
+ setup_xfail "bfin-*-linux-uclibc"
++setup_xfail "powerpc64-*-*"
+ 
+ run_srec_test $test2 "tmpdir/sr3.o"
+Index: binutils-2.20.51.0.2/ld/testsuite/ld-undefined/undefined.exp
+===================================================================
+--- binutils-2.20.51.0.2.orig/ld/testsuite/ld-undefined/undefined.exp
++++ binutils-2.20.51.0.2/ld/testsuite/ld-undefined/undefined.exp
+@@ -136,7 +136,7 @@ setup_xfail "sh64-*-*"
+ # the function. Therefore the line number in the error message is 8 instead
+ # of 9. On 64 bit s/390 this works because of the new brasl instruction that
+ # doesn't need a literal pool entry.
+-setup_xfail s390-*-*
++#setup_xfail s390-*-*
+ 
+ # See comments above for Xtensa.
+ setup_xfail xtensa*-*-linux*

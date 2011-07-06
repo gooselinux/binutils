@@ -1,0 +1,78 @@
+2010-03-26  Matt Rice  <ratmice@gmail.com>
+
+bfd/
+	* archive.c (_bfd_compute_and_write_armap): Allow symbols flagged
+	as unique in the armap.
+
+binutils/
+	* binutils-all/ar.exp (unique_symbol): New test.
+
+Index: binutils-2.20.51.0.2/bfd/archive.c
+===================================================================
+--- binutils-2.20.51.0.2.orig/bfd/archive.c
++++ binutils-2.20.51.0.2/bfd/archive.c
+@@ -2145,6 +2145,7 @@ _bfd_compute_and_write_armap (bfd *arch,
+ 		  if ((flags & BSF_GLOBAL
+ 		       || flags & BSF_WEAK
+ 		       || flags & BSF_INDIRECT
++		       || flags & BSF_GNU_UNIQUE
+ 		       || bfd_is_com_section (sec))
+ 		      && ! bfd_is_und_section (sec))
+ 		    {
+Index: binutils-2.20.51.0.2/binutils/testsuite/binutils-all/ar.exp
+===================================================================
+--- binutils-2.20.51.0.2.orig/binutils/testsuite/binutils-all/ar.exp
++++ binutils-2.20.51.0.2/binutils/testsuite/binutils-all/ar.exp
+@@ -399,6 +399,45 @@ proc deterministic_archive { } {
+     pass $testname
+ }
+ 
++proc unique_symbol { } {
++    global AR
++    global AS
++    global NM
++    global srcdir
++    global subdir
++
++    set testname "ar unique symbol in archive"
++
++    if ![binutils_assemble $srcdir/$subdir/unique.s tmpdir/unique.o] {
++	unresolved $testname
++    }
++
++    if [is_remote host] {
++	set archive artest.a
++	set objfile [remote_download host tmpdir/unique.o]
++	remote_file host delete $archive
++    } else {
++	set archive tmpdir/artest.a
++	set objfile tmpdir/unique.o
++    }
++
++    remote_file build delete tmpdir/artest.a
++
++    set got [binutils_run $AR "-s -r -c $archive ${objfile}"]
++    if ![string match "" $got] {
++	fail $testname
++	return
++    }
++
++    set got [binutils_run $NM "--print-armap $archive"]
++    if ![string match "*foo in *unique.o*" $got] {
++	fail $testname
++	return
++    }
++
++    pass $testname
++}
++
+ # Run the tests.
+ 
+ long_filenames
+@@ -407,3 +446,6 @@ thin_archive
+ thin_archive_with_nested
+ argument_parsing
+ deterministic_archive
++if [is_elf_format] {
++    unique_symbol
++}

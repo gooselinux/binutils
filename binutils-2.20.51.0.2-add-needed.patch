@@ -1,0 +1,411 @@
+diff -rup ../binutils-2.20.51.0.2.original/bfd/elflink.c ./bfd/elflink.c
+--- ../binutils-2.20.51.0.2.original/bfd/elflink.c	2009-11-05 17:42:05.000000000 +0000
++++ ./bfd/elflink.c	2009-11-05 17:48:23.000000000 +0000
+@@ -3918,6 +3918,7 @@ error_free_dyn:
+       bfd_boolean common;
+       unsigned int old_alignment;
+       bfd *old_bfd;
++      bfd * undef_bfd = NULL;
+ 
+       override = FALSE;
+ 
+@@ -4149,6 +4150,20 @@ error_free_dyn:
+ 	      name = newname;
+ 	    }
+ 
++	  /* If this is a definition of a previously undefined symbol
++	     make a note of the bfd that contained the reference in
++	     case we need to refer to it later on in error messages.  */
++	  if (! bfd_is_und_section (sec))
++	    {
++	      h = elf_link_hash_lookup (elf_hash_table (info), name, FALSE, FALSE, FALSE);
++
++	      if (h != NULL
++		  && (h->root.type == bfd_link_hash_undefined
++		      || h->root.type == bfd_link_hash_undefweak)
++		  && h->root.u.undef.abfd)
++		undef_bfd = h->root.u.undef.abfd;
++	    }
++
+ 	  if (!_bfd_elf_merge_symbol (abfd, info, name, isym, &sec,
+ 				      &value, &old_alignment,
+ 				      sym_hash, &skip, &override,
+@@ -4506,9 +4521,12 @@ error_free_dyn:
+ 	      if ((elf_dyn_lib_class (abfd) & DYN_NO_NEEDED) != 0)
+ 		{
+ 		  (*_bfd_error_handler)
+-		    (_("%s: invalid DSO for symbol `%s' definition"),
++		    (_("%B: undefined reference to symbol '%s'"),
++		     undef_bfd == NULL ? info->output_bfd : undef_bfd, name);
++		  (*_bfd_error_handler)
++		    (_("note: '%s' is defined in DSO %B so try adding it to the linker command line"),
+ 		     abfd, name);
+-		  bfd_set_error (bfd_error_bad_value);
++		  bfd_set_error (bfd_error_invalid_operation);
+ 		  goto error_free_vers;
+ 		}
+ 
+diff -rup ../binutils-2.20.51.0.2.original/gas/testsuite/gas/elf/elf.exp ./gas/testsuite/gas/elf/elf.exp
+--- ../binutils-2.20.51.0.2.original/gas/testsuite/gas/elf/elf.exp	2009-11-05 17:42:03.000000000 +0000
++++ ./gas/testsuite/gas/elf/elf.exp	2009-11-05 18:11:55.000000000 +0000
+@@ -151,5 +151,4 @@ if { ([istarget "*-*-*elf*"]		
+     run_dump_test "section7" 
+     run_dump_test "dwarf2-1" 
+     run_dump_test "dwarf2-2" 
+-    run_dump_test "dwarf2-3" 
+ }
+diff -rup ../binutils-2.20.51.0.2.original/ld/emultempl/elf32.em ./ld/emultempl/elf32.em
+--- ../binutils-2.20.51.0.2.original/ld/emultempl/elf32.em	2009-11-05 17:41:58.000000000 +0000
++++ ./ld/emultempl/elf32.em	2009-11-05 17:45:22.000000000 +0000
+@@ -110,7 +110,7 @@ fi
+ 
+ if test x"$LDEMUL_RECOGNIZED_FILE" != xgld"${EMULATION_NAME}"_load_symbols; then
+ fragment <<EOF
+-/* Handle as_needed DT_NEEDED.  */
++/* Handle the generation of DT_NEEDED tags.  */
+ 
+ static bfd_boolean
+ gld${EMULATION_NAME}_load_symbols (lang_input_statement_type *entry)
+@@ -120,13 +120,13 @@ gld${EMULATION_NAME}_load_symbols (lang_
+   /* Tell the ELF linker that we don't want the output file to have a
+      DT_NEEDED entry for this file, unless it is used to resolve
+      references in a regular object.  */
+-  if (entry->as_needed)
++  if (entry->add_DT_NEEDED_for_regular)
+     link_class = DYN_AS_NEEDED;
+ 
+   /* Tell the ELF linker that we don't want the output file to have a
+      DT_NEEDED entry for any dynamic library in DT_NEEDED tags from
+      this file at all.  */
+-  if (!entry->add_needed)
++  if (!entry->add_DT_NEEDED_for_dynamic)
+     link_class |= DYN_NO_ADD_NEEDED;
+ 
+   if (entry->just_syms_flag
+@@ -134,7 +134,7 @@ gld${EMULATION_NAME}_load_symbols (lang_
+     einfo (_("%P%F: --just-symbols may not be used on DSO: %B\n"),
+ 	   entry->the_bfd);
+ 
+-  if (!link_class
++  if (link_class == 0
+       || (bfd_get_file_flags (entry->the_bfd) & DYNAMIC) == 0)
+     return FALSE;
+ 
+diff -rup ../binutils-2.20.51.0.2.original/ld/ldgram.y ./ld/ldgram.y
+--- ../binutils-2.20.51.0.2.original/ld/ldgram.y	2009-11-05 17:42:00.000000000 +0000
++++ ./ld/ldgram.y	2009-11-05 17:45:22.000000000 +0000
+@@ -378,17 +378,17 @@ input_list:
+ 		{ lang_add_input_file($2,lang_input_file_is_l_enum,
+ 				 (char *)NULL); }
+ 	|	AS_NEEDED '('
+-		  { $<integer>$ = as_needed; as_needed = TRUE; }
++		  { $<integer>$ = add_DT_NEEDED_for_regular; add_DT_NEEDED_for_regular = TRUE; }
+ 		     input_list ')'
+-		  { as_needed = $<integer>3; }
++		  { add_DT_NEEDED_for_regular = $<integer>3; }
+ 	|	input_list ',' AS_NEEDED '('
+-		  { $<integer>$ = as_needed; as_needed = TRUE; }
++		  { $<integer>$ = add_DT_NEEDED_for_regular; add_DT_NEEDED_for_regular = TRUE; }
+ 		     input_list ')'
+-		  { as_needed = $<integer>5; }
++		  { add_DT_NEEDED_for_regular = $<integer>5; }
+ 	|	input_list AS_NEEDED '('
+-		  { $<integer>$ = as_needed; as_needed = TRUE; }
++		  { $<integer>$ = add_DT_NEEDED_for_regular; add_DT_NEEDED_for_regular = TRUE; }
+ 		     input_list ')'
+-		  { as_needed = $<integer>4; }
++		  { add_DT_NEEDED_for_regular = $<integer>4; }
+ 	;
+ 
+ sections:
+diff -rup ../binutils-2.20.51.0.2.original/ld/ldlang.c ./ld/ldlang.c
+--- ../binutils-2.20.51.0.2.original/ld/ldlang.c	2009-11-05 17:42:00.000000000 +0000
++++ ./ld/ldlang.c	2009-11-05 18:01:29.000000000 +0000
+@@ -1056,8 +1056,8 @@ new_afile (const char *name,
+   p->next_real_file = NULL;
+   p->next = NULL;
+   p->dynamic = config.dynamic_link;
+-  p->add_needed = add_needed;
+-  p->as_needed = as_needed;
++  p->add_DT_NEEDED_for_dynamic = add_DT_NEEDED_for_dynamic;
++  p->add_DT_NEEDED_for_regular = add_DT_NEEDED_for_regular;
+   p->whole_archive = whole_archive;
+   p->loaded = FALSE;
+   lang_statement_append (&input_file_chain,
+@@ -2592,7 +2592,8 @@ load_symbols (lang_input_statement_type 
+     {
+       bfd_error_type err;
+       bfd_boolean save_ldlang_sysrooted_script;
+-      bfd_boolean save_as_needed, save_add_needed;
++      bfd_boolean save_add_DT_NEEDED_for_regular;
++      bfd_boolean save_add_DT_NEEDED_for_dynamic;
+ 
+       err = bfd_get_error ();
+ 
+@@ -2623,10 +2624,10 @@ load_symbols (lang_input_statement_type 
+       push_stat_ptr (place);
+       save_ldlang_sysrooted_script = ldlang_sysrooted_script;
+       ldlang_sysrooted_script = entry->sysrooted;
+-      save_as_needed = as_needed;
+-      as_needed = entry->as_needed;
+-      save_add_needed = add_needed;
+-      add_needed = entry->add_needed;
++      save_add_DT_NEEDED_for_regular = add_DT_NEEDED_for_regular;
++      add_DT_NEEDED_for_regular = entry->add_DT_NEEDED_for_regular;
++      save_add_DT_NEEDED_for_dynamic = add_DT_NEEDED_for_dynamic;
++      add_DT_NEEDED_for_dynamic = entry->add_DT_NEEDED_for_dynamic;
+ 
+       ldfile_assumed_script = TRUE;
+       parser_input = input_script;
+@@ -2637,8 +2638,8 @@ load_symbols (lang_input_statement_type 
+       ldfile_assumed_script = FALSE;
+ 
+       ldlang_sysrooted_script = save_ldlang_sysrooted_script;
+-      as_needed = save_as_needed;
+-      add_needed = save_add_needed;
++      add_DT_NEEDED_for_regular = save_add_DT_NEEDED_for_regular;
++      add_DT_NEEDED_for_dynamic = save_add_DT_NEEDED_for_dynamic;
+       pop_stat_ptr ();
+ 
+       return TRUE;
+diff -rup ../binutils-2.20.51.0.2.original/ld/ldlang.h ./ld/ldlang.h
+--- ../binutils-2.20.51.0.2.original/ld/ldlang.h	2009-11-05 17:41:58.000000000 +0000
++++ ./ld/ldlang.h	2009-11-05 17:45:22.000000000 +0000
+@@ -270,11 +270,11 @@ typedef struct lang_input_statement_stru
+ 
+   /* Whether DT_NEEDED tags should be added for dynamic libraries in
+      DT_NEEDED tags from this entry.  */
+-  unsigned int add_needed : 1;
++  unsigned int add_DT_NEEDED_for_dynamic : 1;
+ 
+   /* Whether this entry should cause a DT_NEEDED tag only when
+      satisfying references from regular files, or always.  */
+-  unsigned int as_needed : 1;
++  unsigned int add_DT_NEEDED_for_regular : 1;
+ 
+   /* Whether to include the entire contents of an archive.  */
+   unsigned int whole_archive : 1;
+diff -rup ../binutils-2.20.51.0.2.original/ld/ldmain.c ./ld/ldmain.c
+--- ../binutils-2.20.51.0.2.original/ld/ldmain.c	2009-11-05 17:42:00.000000000 +0000
++++ ./ld/ldmain.c	2009-11-05 17:45:22.000000000 +0000
+@@ -93,13 +93,14 @@ bfd_boolean version_printed;
+ /* Nonzero means link in every member of an archive.  */
+ bfd_boolean whole_archive;
+ 
+-/* Nonzero means create DT_NEEDED entries only if a dynamic library
+-   actually satisfies some reference in a regular object.  */
+-bfd_boolean as_needed;
+-
+-/* Nonzero means never create DT_NEEDED entries for dynamic libraries
+-   in DT_NEEDED tags.  */
+-bfd_boolean add_needed = TRUE;
++/* True means only create DT_NEEDED entries for dynamic libraries
++   if they actually satisfy some reference in a regular object.  */
++bfd_boolean add_DT_NEEDED_for_regular;
++
++/* True means create DT_NEEDED entries for dynamic libraries that
++   are DT_NEEDED by dynamic libraries specifically mentioned on
++   the command line.  */
++bfd_boolean add_DT_NEEDED_for_dynamic = TRUE;
+ 
+ /* TRUE if we should demangle symbol names.  */
+ bfd_boolean demangling;
+diff -rup ../binutils-2.20.51.0.2.original/ld/ldmain.h ./ld/ldmain.h
+--- ../binutils-2.20.51.0.2.original/ld/ldmain.h	2009-11-05 17:41:58.000000000 +0000
++++ ./ld/ldmain.h	2009-11-05 17:45:22.000000000 +0000
+@@ -1,6 +1,6 @@
+ /* ldmain.h -
+    Copyright 1991, 1992, 1993, 1994, 1995, 1996, 1999, 2002, 2003, 2004,
+-   2005, 2007, 2008 Free Software Foundation, Inc.
++   2005, 2007, 2008, 2009 Free Software Foundation, Inc.
+ 
+    This file is part of the GNU Binutils.
+ 
+@@ -34,8 +34,8 @@ extern bfd_boolean trace_files;
+ extern bfd_boolean trace_file_tries;
+ extern bfd_boolean version_printed;
+ extern bfd_boolean whole_archive;
+-extern bfd_boolean as_needed;
+-extern bfd_boolean add_needed;
++extern bfd_boolean add_DT_NEEDED_for_regular;
++extern bfd_boolean add_DT_NEEDED_for_dynamic;
+ extern bfd_boolean demangling;
+ extern enum report_method how_to_report_unresolved_symbols;
+ extern int g_switch_value;
+diff -rup ../binutils-2.20.51.0.2.original/ld/ld.texinfo ./ld/ld.texinfo
+--- ../binutils-2.20.51.0.2.original/ld/ld.texinfo	2009-11-05 17:41:58.000000000 +0000
++++ ./ld/ld.texinfo	2009-11-05 17:45:22.000000000 +0000
+@@ -1132,27 +1132,24 @@ restore the old behaviour.
+ @item --as-needed
+ @itemx --no-as-needed
+ This option affects ELF DT_NEEDED tags for dynamic libraries mentioned
+-on the command line after the @option{--as-needed} option.  Normally,
++on the command line after the @option{--as-needed} option.  Normally
+ the linker will add a DT_NEEDED tag for each dynamic library mentioned
+ on the command line, regardless of whether the library is actually
+-needed.  @option{--as-needed} causes a DT_NEEDED tag to only be emitted
+-for a library that satisfies a symbol reference from regular objects
+-which is undefined at the point that the library was linked, or, if
+-the library is not found in the DT_NEEDED lists of other libraries
+-linked up to that point, a reference from another dynamic library.
++needed or not.  @option{--as-needed} causes a DT_NEEDED tag to only be
++emitted for a library that satisfies an undefined symbol reference
++from a regular object file or, if the library is not found in the
++DT_NEEDED lists of other libraries linked up to that point, an
++undefined symbol reference from another dynamic library.
+ @option{--no-as-needed} restores the default behaviour.
+ 
+ @kindex --add-needed
+ @kindex --no-add-needed
+ @item --add-needed
+ @itemx --no-add-needed
+-This option affects the treatment of dynamic libraries from ELF
+-DT_NEEDED tags in dynamic libraries mentioned on the command line after
+-the @option{--no-add-needed} option.  Normally, the linker will add
+-a DT_NEEDED tag for each dynamic library from DT_NEEDED tags.
+-@option{--no-add-needed} causes DT_NEEDED tags will never be emitted
+-for those libraries from DT_NEEDED tags. @option{--add-needed} restores
+-the default behaviour.
++These two options have been deprecated because of the similarity of
++their names to the @option{--as-needed} and @option{--no-as-needed}
++options.  They have been replaced by @option{--copy-dt-needed-entries}
++and @option{--no-copy-dt-needed-entries}.
+ 
+ @kindex -assert @var{keyword}
+ @item -assert @var{keyword}
+@@ -1253,6 +1250,29 @@ Section overlap is not usually checked f
+ force checking in that case by using the @option{--check-sections}
+ option.
+ 
++@kindex --copy-dt-needed-entries
++@kindex --no-copy-dt-needed-entries
++@item --copy-dt-needed-entries
++@itemx --no-copy-dt-needed-entries
++This option affects the treatment of dynamic libraries referred to 
++by DT_NEEDED tags @emph{inside} ELF dynamic libraries mentioned on the
++command line.  Normally the linker will add a DT_NEEDED tag to the
++output binary for each library mentioned in a DT_NEEDED tag in an
++input dynamic library.  With @option{--no-copy-dt-needed-entries}
++specified on the command line however any dynamic libraries that
++follow it will have their DT_NEEDED entries ignored.  The default
++behaviour can be restored with @option{--copy-dt-needed-entries}.
++
++This option also has an effect on the resolution of symbols in dynamic
++libraries.  With the default setting dynamic libraries mentioned on
++the command line will be recursively searched, following their
++DT_NEEDED tags to other libraries, in order to resolve symbols
++required by the output binary.  With
++@option{--no-copy-dt-needed-entries} specified however the searching
++of dynamic libraries that follow it will stop with the dynamic
++library itself.  No DT_NEEDED links will be traversed to resolve
++symbols.
++
+ @cindex cross reference table
+ @kindex --cref
+ @item --cref
+diff -rup ../binutils-2.20.51.0.2.original/ld/lexsup.c ./ld/lexsup.c
+--- ../binutils-2.20.51.0.2.original/ld/lexsup.c	2009-11-05 17:42:00.000000000 +0000
++++ ./ld/lexsup.c	2009-11-05 17:45:22.000000000 +0000
+@@ -125,10 +125,10 @@ enum option_values
+   OPTION_SPLIT_BY_RELOC,
+   OPTION_SPLIT_BY_FILE ,
+   OPTION_WHOLE_ARCHIVE,
+-  OPTION_ADD_NEEDED,
+-  OPTION_NO_ADD_NEEDED,
+-  OPTION_AS_NEEDED,
+-  OPTION_NO_AS_NEEDED,
++  OPTION_ADD_DT_NEEDED_FOR_DYNAMIC,
++  OPTION_NO_ADD_DT_NEEDED_FOR_DYNAMIC,
++  OPTION_ADD_DT_NEEDED_FOR_REGULAR,
++  OPTION_NO_ADD_DT_NEEDED_FOR_REGULAR,
+   OPTION_WRAP,
+   OPTION_FORCE_EXE_SUFFIX,
+   OPTION_GC_SECTIONS,
+@@ -333,19 +333,22 @@ static const struct ld_option ld_options
+      OPTION_NO_ACCEPT_UNKNOWN_INPUT_ARCH},
+     '\0', NULL, N_("Reject input files whose architecture is unknown"),
+     TWO_DASHES },
+-  { {"add-needed", no_argument, NULL, OPTION_ADD_NEEDED},
+-    '\0', NULL, N_("Set DT_NEEDED tags for DT_NEEDED entries in\n"
+-		   "                                following dynamic libs"),
+-    TWO_DASHES },
+-  { {"no-add-needed", no_argument, NULL, OPTION_NO_ADD_NEEDED},
+-    '\0', NULL, N_("Do not set DT_NEEDED tags for DT_NEEDED entries\n"
+-		   "                                in following dynamic libs"),
+-    TWO_DASHES },
+-  { {"as-needed", no_argument, NULL, OPTION_AS_NEEDED},
++
++  /* The next two options are deprecated because of their similarity to
++     --as-needed and --no-as-needed.  They have been replaced by
++     --resolve-implicit-dynamic-symbols and
++     --no-resolve-implicit-dynamic-symbols.  */
++  { {"add-needed", no_argument, NULL, OPTION_ADD_DT_NEEDED_FOR_DYNAMIC},
++    '\0', NULL, NULL, NO_HELP },
++  { {"no-add-needed", no_argument, NULL, OPTION_NO_ADD_DT_NEEDED_FOR_DYNAMIC},
++    '\0', NULL, NULL, NO_HELP },
++
++  { {"as-needed", no_argument, NULL, OPTION_ADD_DT_NEEDED_FOR_REGULAR},
+     '\0', NULL, N_("Only set DT_NEEDED for following dynamic libs if used"),
+     TWO_DASHES },
+-  { {"no-as-needed", no_argument, NULL, OPTION_NO_AS_NEEDED},
+-    '\0', NULL, N_("Always set DT_NEEDED for following dynamic libs"),
++  { {"no-as-needed", no_argument, NULL, OPTION_NO_ADD_DT_NEEDED_FOR_REGULAR},
++    '\0', NULL, N_("Always set DT_NEEDED for dynamic libraries mentioned on\n"
++		   "                                the command line"),
+     TWO_DASHES },
+   { {"assert", required_argument, NULL, OPTION_ASSERT},
+     '\0', N_("KEYWORD"), N_("Ignored for SunOS compatibility"), ONE_DASH },
+@@ -373,6 +376,15 @@ static const struct ld_option ld_options
+   { {"no-check-sections", no_argument, NULL, OPTION_NO_CHECK_SECTIONS},
+     '\0', NULL, N_("Do not check section addresses for overlaps"),
+     TWO_DASHES },
++  { {"copy-dt-needed-entries", no_argument, NULL,
++     OPTION_ADD_DT_NEEDED_FOR_DYNAMIC},
++    '\0', NULL, N_("Copy DT_NEEDED links mentioned inside DSOs that follow"),
++    TWO_DASHES },
++  { {"no-copy-dt-needed-entries", no_argument, NULL,
++     OPTION_NO_ADD_DT_NEEDED_FOR_DYNAMIC},
++    '\0', NULL, N_("Do not copy DT_NEEDED links mentioned inside DSOs that follow"),
++    TWO_DASHES },
++
+   { {"cref", no_argument, NULL, OPTION_CREF},
+     '\0', NULL, N_("Output cross reference table"), TWO_DASHES },
+   { {"defsym", required_argument, NULL, OPTION_DEFSYM},
+@@ -1373,17 +1385,17 @@ parse_args (unsigned argc, char **argv)
+ 	case OPTION_WHOLE_ARCHIVE:
+ 	  whole_archive = TRUE;
+ 	  break;
+-	case OPTION_ADD_NEEDED:
+-	  add_needed = TRUE;
++	case OPTION_ADD_DT_NEEDED_FOR_DYNAMIC:
++	  add_DT_NEEDED_for_dynamic = TRUE;
+ 	  break;
+-	case OPTION_NO_ADD_NEEDED:
+-	  add_needed = FALSE;
++	case OPTION_NO_ADD_DT_NEEDED_FOR_DYNAMIC:
++	  add_DT_NEEDED_for_dynamic = FALSE;
+ 	  break;
+-	case OPTION_AS_NEEDED:
+-	  as_needed = TRUE;
++	case OPTION_ADD_DT_NEEDED_FOR_REGULAR:
++	  add_DT_NEEDED_for_regular = TRUE;
+ 	  break;
+-	case OPTION_NO_AS_NEEDED:
+-	  as_needed = FALSE;
++	case OPTION_NO_ADD_DT_NEEDED_FOR_REGULAR:
++	  add_DT_NEEDED_for_regular = FALSE;
+ 	  break;
+ 	case OPTION_WRAP:
+ 	  add_wrap (optarg);
+diff -rup ../binutils-2.20.51.0.2.original/ld/NEWS ./ld/NEWS
+--- ../binutils-2.20.51.0.2.original/ld/NEWS	2009-11-05 17:42:00.000000000 +0000
++++ ./ld/NEWS	2009-11-05 17:45:59.000000000 +0000
+@@ -1,5 +1,8 @@
+ -*- text -*-
+ 
++* --add-needed renamed to --copy-dt-needed-entries in order to avoid confusion
++  with --as-needed option.
++
+ * Add support for the Renesas RX processor.
+ 
+ Changes in 2.20:

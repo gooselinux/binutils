@@ -1,0 +1,32 @@
+2009-12-09  Alan Modra  <amodra@bigpond.net.au>
+
+	PR ld/11012
+	* emulparams/elf64ppc.sh (OTHER_GOT_RELOC_SECTIONS): Move .rela.opd ..
+	(INITIAL_RELOC_SECTIONS): .. to here.  New define.
+	* scripttempl/elf.sc: Expand INITIAL_RELOC_SECTIONS.
+
+--- ld/emulparams/elf64ppc.sh	22 Oct 2008 05:20:44 -0000	1.21
++++ ld/emulparams/elf64ppc.sh	9 Dec 2009 01:26:20 -0000	1.21.6.1
+@@ -28,9 +28,11 @@ else
+   .got		0 : { *(.got) }
+   .toc		0 : { *(.toc) }"
+ fi
++# Put .opd relocs first so ld.so will process them before any ifunc relocs.
++INITIAL_RELOC_SECTIONS="
++  .rela.opd	${RELOCATING-0} : { *(.rela.opd) }"
+ OTHER_GOT_RELOC_SECTIONS="
+   .rela.toc	${RELOCATING-0} : { *(.rela.toc) }
+-  .rela.opd	${RELOCATING-0} : { *(.rela.opd) }
+   .rela.branch_lt	${RELOCATING-0} : { *(.rela.branch_lt) }"
+ OTHER_READWRITE_SECTIONS="
+   .toc1		${RELOCATING-0} :${RELOCATING+ ALIGN(8)} { *(.toc1) }
+--- ld/scripttempl/elf.sc	4 Sep 2009 06:35:29 -0000	1.95.2.2
++++ ld/scripttempl/elf.sc	9 Dec 2009 01:26:21 -0000	1.95.2.3
+@@ -341,6 +341,7 @@ else
+   COMBRELOCCAT="cat > $COMBRELOC"
+ fi
+ eval $COMBRELOCCAT <<EOF
++  ${INITIAL_RELOC_SECTIONS}
+   .rel.init      : { *(.rel.init) }
+   .rela.init     : { *(.rela.init) }
+   .rel.text      : { *(.rel.text${RELOCATING+ .rel.text.* .rel.gnu.linkonce.t.*}) }

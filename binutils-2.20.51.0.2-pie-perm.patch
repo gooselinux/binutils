@@ -1,0 +1,16 @@
+2009-10-20  Alan Modra  <amodra@bigpond.net.au>
+
+	PR binutils/10802
+	* opncls.c (_maybe_make_executable): Make DYNAMIC files executable.
+
+--- bfd/opncls.c	2 Sep 2009 07:18:37 -0000	1.57.2.2
++++ bfd/opncls.c	20 Oct 2009 08:40:36 -0000	1.57.2.3
+@@ -635,7 +635,7 @@ _maybe_make_executable (bfd * abfd)
+   /* If the file was open for writing and is now executable,
+      make it so.  */
+   if (abfd->direction == write_direction
+-      && abfd->flags & EXEC_P)
++      && (abfd->flags & (EXEC_P | DYNAMIC)) != 0)
+     {
+       struct stat buf;
+ 

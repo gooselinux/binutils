@@ -1,0 +1,95 @@
+2009-10-28  Alan Modra  <amodra@bigpond.net.au>
+
+	PR gas/10856
+	* expr.c (resolve_expression): Only add "left" value to O_symbol
+	expression when the symbol is undefined and different from the
+	original symbol.  Simplify negative logic.
+
+	* gas/i386/intelpic.d: Correct.
+
+--- gas/expr.c	2009-12-09 11:45:56.000000000 +0000
++++ gas/expr.c	2009-12-09 11:48:10.000000000 +0000
+@@ -1997,6 +1997,7 @@ resolve_expression (expressionS *express
+   /* Help out with CSE.  */
+   valueT final_val = expressionP->X_add_number;
+   symbolS *add_symbol = expressionP->X_add_symbol;
++  symbolS *orig_add_symbol = add_symbol;
+   symbolS *op_symbol = expressionP->X_op_symbol;
+   operatorT op = expressionP->X_op;
+   valueT left, right;
+@@ -2078,6 +2079,7 @@ resolve_expression (expressionS *express
+ 	      left = right;
+ 	      seg_left = seg_right;
+ 	      add_symbol = op_symbol;
++	      orig_add_symbol = expressionP->X_op_symbol;
+ 	      op = O_symbol;
+ 	      break;
+ 	    }
+@@ -2122,18 +2124,19 @@ resolve_expression (expressionS *express
+ 	    {
+ 	      if (op == O_bit_exclusive_or || op == O_bit_inclusive_or)
+ 		{
+-		  if (seg_right != absolute_section || right != 0)
++		  if (!(seg_right == absolute_section && right == 0))
+ 		    {
+ 		      seg_left = seg_right;
+ 		      left = right;
+ 		      add_symbol = op_symbol;
++		      orig_add_symbol = expressionP->X_op_symbol;
+ 		    }
+ 		  op = O_symbol;
+ 		  break;
+ 		}
+ 	      else if (op == O_left_shift || op == O_right_shift)
+ 		{
+-		  if (seg_left != absolute_section || left != 0)
++		  if (!(seg_left == absolute_section && left == 0))
+ 		    {
+ 		      op = O_symbol;
+ 		      break;
+@@ -2150,6 +2153,7 @@ resolve_expression (expressionS *express
+ 	      left = right;
+ 	      add_symbol = op_symbol;
+ 	      op = O_symbol;
++	      orig_add_symbol = expressionP->X_op_symbol;
+ 	      break;
+ 	    }
+ 	  else if ((op == O_multiply || op == O_divide)
+@@ -2158,11 +2162,11 @@ resolve_expression (expressionS *express
+ 	      op = O_symbol;
+ 	      break;
+ 	    }
+-	  else if (left != right
+-		   || ((seg_left != reg_section || seg_right != reg_section)
+-		       && (seg_left != undefined_section
+-			   || seg_right != undefined_section
+-			   || add_symbol != op_symbol)))
++	  else if (!(left == right
++		     && ((seg_left == reg_section && seg_right == reg_section)
++			 || (seg_left == undefined_section
++			     && seg_right == undefined_section
++			     && add_symbol == op_symbol))))
+ 	    return 0;
+ 	  else if (op == O_bit_and || op == O_bit_inclusive_or)
+ 	    {
+@@ -2233,7 +2237,8 @@ resolve_expression (expressionS *express
+ 	op = O_constant;
+       else if (seg_left == reg_section && final_val == 0)
+ 	op = O_register;
+-      else if (add_symbol != expressionP->X_add_symbol)
++      else if (seg_left == undefined_section
++	       && add_symbol != orig_add_symbol)
+ 	final_val += left;
+       expressionP->X_add_symbol = add_symbol;
+     }
+--- gas/testsuite/gas/i386/intelpic.d	2009-12-09 11:45:59.000000000 +0000
++++ gas/testsuite/gas/i386/intelpic.d	2009-12-09 11:49:17.000000000 +0000
+@@ -12,6 +12,6 @@ Disassembly of section .text:
+ 0+1 <bar>:
+ [ 	]*[a-f0-9]+:	8d 83 14 00 00 00    	lea    0x14\(%ebx\),%eax
+ [ 	]*[a-f0-9]+:	8b 83 00 00 00 00    	mov    0x0\(%ebx\),%eax
+-[ 	]*[a-f0-9]+:	ff 24 85 1a 00 00 00 	jmp    \*0x1a\(,%eax,4\)
++[ 	]*[a-f0-9]+:	ff 24 85 0d 00 00 00 	jmp    \*0xd\(,%eax,4\)
+ [ 	]*[a-f0-9]+:	8d 83 14 00 00 00    	lea    0x14\(%ebx\),%eax
+ #pass
+

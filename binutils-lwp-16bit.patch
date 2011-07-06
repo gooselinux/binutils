@@ -1,0 +1,1124 @@
+2010-03-22  Sebastian Pop  <sebastian.pop@amd.com>
+	    Quentin Neill <quentin.neill@amd.com>
+
+	opcodes/
+	* i386-dis.c (OP_LWP_I): Removed.
+	(reg_table): Do not use OP_LWP_I, use Iq.
+	(OP_LWPCB_E): Remove use of names16.
+	(OP_LWP_E): Same.
+	* i386-opc.tbl: Removed 16bit LWP insns.  32bit LWP insns
+	should not set the Vex.length bit.
+	* i386-tbl.h: Regenerated.
+
+	gas/
+	* testsuite/gas/i386/x86-64-lwp.s: Remove use of 16bit LWP insns.
+	* testsuite/gas/i386/lwp.s: Same.
+	* testsuite/gas/i386/x86-64-lwp.d: Updated.
+	* testsuite/gas/i386/lwp.d: Updated.
+
+Index: binutils-2.20.51.0.2/gas/testsuite/gas/i386/lwp.d
+===================================================================
+--- binutils-2.20.51.0.2.orig/gas/testsuite/gas/i386/lwp.d
++++ binutils-2.20.51.0.2/gas/testsuite/gas/i386/lwp.d
+@@ -6,132 +6,68 @@
+ Disassembly of section .text:
+ 
+ 0+ <_start>:
+-[ 	]*[a-f0-9]+:	8f e9 78 12 c0[ 	]+llwpcb %ax
+-[ 	]*[a-f0-9]+:	8f e9 78 12 c1[ 	]+llwpcb %cx
+-[ 	]*[a-f0-9]+:	8f e9 78 12 c2[ 	]+llwpcb %dx
+-[ 	]*[a-f0-9]+:	8f e9 78 12 c3[ 	]+llwpcb %bx
+-[ 	]*[a-f0-9]+:	8f e9 78 12 c4[ 	]+llwpcb %sp
+-[ 	]*[a-f0-9]+:	8f e9 78 12 c5[ 	]+llwpcb %bp
+-[ 	]*[a-f0-9]+:	8f e9 78 12 c6[ 	]+llwpcb %si
+-[ 	]*[a-f0-9]+:	8f e9 78 12 c7[ 	]+llwpcb %di
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 c0[ 	]+llwpcb %eax
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 c1[ 	]+llwpcb %ecx
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 c2[ 	]+llwpcb %edx
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 c3[ 	]+llwpcb %ebx
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 c4[ 	]+llwpcb %esp
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 c5[ 	]+llwpcb %ebp
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 c6[ 	]+llwpcb %esi
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 c7[ 	]+llwpcb %edi
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 cf[ 	]+slwpcb %edi
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 ce[ 	]+slwpcb %esi
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 cd[ 	]+slwpcb %ebp
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 cc[ 	]+slwpcb %esp
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 cb[ 	]+slwpcb %ebx
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 ca[ 	]+slwpcb %edx
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 c9[ 	]+slwpcb %ecx
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 c8[ 	]+slwpcb %eax
+-[ 	]*[a-f0-9]+:	8f e9 78 12 cf[ 	]+slwpcb %di
+-[ 	]*[a-f0-9]+:	8f e9 78 12 ce[ 	]+slwpcb %si
+-[ 	]*[a-f0-9]+:	8f e9 78 12 cd[ 	]+slwpcb %bp
+-[ 	]*[a-f0-9]+:	8f e9 78 12 cc[ 	]+slwpcb %sp
+-[ 	]*[a-f0-9]+:	8f e9 78 12 cb[ 	]+slwpcb %bx
+-[ 	]*[a-f0-9]+:	8f e9 78 12 ca[ 	]+slwpcb %dx
+-[ 	]*[a-f0-9]+:	8f e9 78 12 c9[ 	]+slwpcb %cx
+-[ 	]*[a-f0-9]+:	8f e9 78 12 c8[ 	]+slwpcb %ax
+-[ 	]*[a-f0-9]+:	8f ea 78 12 c0 34 12[ 	]+lwpins \$0x1234,%eax,%ax
+-[ 	]*[a-f0-9]+:	8f ea 70 12 c1 34 12[ 	]+lwpins \$0x1234,%ecx,%cx
+-[ 	]*[a-f0-9]+:	8f ea 68 12 c2 34 12[ 	]+lwpins \$0x1234,%edx,%dx
+-[ 	]*[a-f0-9]+:	8f ea 60 12 c3 34 12[ 	]+lwpins \$0x1234,%ebx,%bx
+-[ 	]*[a-f0-9]+:	8f ea 58 12 c4 34 12[ 	]+lwpins \$0x1234,%esp,%sp
+-[ 	]*[a-f0-9]+:	8f ea 50 12 c5 34 12[ 	]+lwpins \$0x1234,%ebp,%bp
+-[ 	]*[a-f0-9]+:	8f ea 48 12 c6 34 12[ 	]+lwpins \$0x1234,%esi,%si
+-[ 	]*[a-f0-9]+:	8f ea 40 12 c7 34 12[ 	]+lwpins \$0x1234,%edi,%di
+-[ 	]*[a-f0-9]+:	8f ea 7c 12 c7 78 56 34 12[ 	]+lwpins \$0x12345678,%edi,%eax
+-[ 	]*[a-f0-9]+:	8f ea 74 12 c6 78 56 34 12[ 	]+lwpins \$0x12345678,%esi,%ecx
+-[ 	]*[a-f0-9]+:	8f ea 6c 12 c5 78 56 34 12[ 	]+lwpins \$0x12345678,%ebp,%edx
+-[ 	]*[a-f0-9]+:	8f ea 64 12 c4 78 56 34 12[ 	]+lwpins \$0x12345678,%esp,%ebx
+-[ 	]*[a-f0-9]+:	8f ea 5c 12 c3 78 56 34 12[ 	]+lwpins \$0x12345678,%ebx,%esp
+-[ 	]*[a-f0-9]+:	8f ea 54 12 c2 78 56 34 12[ 	]+lwpins \$0x12345678,%edx,%ebp
+-[ 	]*[a-f0-9]+:	8f ea 4c 12 c1 78 56 34 12[ 	]+lwpins \$0x12345678,%ecx,%esi
+-[ 	]*[a-f0-9]+:	8f ea 44 12 c0 78 56 34 12[ 	]+lwpins \$0x12345678,%eax,%edi
+-[ 	]*[a-f0-9]+:	8f ea 78 12 c8 34 12[ 	]+lwpval \$0x1234,%eax,%ax
+-[ 	]*[a-f0-9]+:	8f ea 70 12 c9 34 12[ 	]+lwpval \$0x1234,%ecx,%cx
+-[ 	]*[a-f0-9]+:	8f ea 68 12 ca 34 12[ 	]+lwpval \$0x1234,%edx,%dx
+-[ 	]*[a-f0-9]+:	8f ea 60 12 cb 34 12[ 	]+lwpval \$0x1234,%ebx,%bx
+-[ 	]*[a-f0-9]+:	8f ea 58 12 cc 34 12[ 	]+lwpval \$0x1234,%esp,%sp
+-[ 	]*[a-f0-9]+:	8f ea 50 12 cd 34 12[ 	]+lwpval \$0x1234,%ebp,%bp
+-[ 	]*[a-f0-9]+:	8f ea 48 12 ce 34 12[ 	]+lwpval \$0x1234,%esi,%si
+-[ 	]*[a-f0-9]+:	8f ea 40 12 cf 34 12[ 	]+lwpval \$0x1234,%edi,%di
+-[ 	]*[a-f0-9]+:	8f ea 7c 12 cf 78 56 34 12[ 	]+lwpval \$0x12345678,%edi,%eax
+-[ 	]*[a-f0-9]+:	8f ea 74 12 ce 78 56 34 12[ 	]+lwpval \$0x12345678,%esi,%ecx
+-[ 	]*[a-f0-9]+:	8f ea 6c 12 cd 78 56 34 12[ 	]+lwpval \$0x12345678,%ebp,%edx
+-[ 	]*[a-f0-9]+:	8f ea 64 12 cc 78 56 34 12[ 	]+lwpval \$0x12345678,%esp,%ebx
+-[ 	]*[a-f0-9]+:	8f ea 5c 12 cb 78 56 34 12[ 	]+lwpval \$0x12345678,%ebx,%esp
+-[ 	]*[a-f0-9]+:	8f ea 54 12 ca 78 56 34 12[ 	]+lwpval \$0x12345678,%edx,%ebp
+-[ 	]*[a-f0-9]+:	8f ea 4c 12 c9 78 56 34 12[ 	]+lwpval \$0x12345678,%ecx,%esi
+-[ 	]*[a-f0-9]+:	8f ea 44 12 c8 78 56 34 12[ 	]+lwpval \$0x12345678,%eax,%edi
+-[ 	]*[a-f0-9]+:	8f ea 78 12 00 34 12[ 	]+lwpins \$0x1234,\(%eax\),%ax
+-[ 	]*[a-f0-9]+:	8f ea 70 12 01 34 12[ 	]+lwpins \$0x1234,\(%ecx\),%cx
+-[ 	]*[a-f0-9]+:	8f ea 68 12 02 34 12[ 	]+lwpins \$0x1234,\(%edx\),%dx
+-[ 	]*[a-f0-9]+:	8f ea 60 12 03 34 12[ 	]+lwpins \$0x1234,\(%ebx\),%bx
+-[ 	]*[a-f0-9]+:	8f ea 58 12 04 24 34 12[ 	]+lwpins \$0x1234,\(%esp\),%sp
+-[ 	]*[a-f0-9]+:	8f ea 50 12 45 00 34 12[ 	]+lwpins \$0x1234,0x0\(%ebp\),%bp
+-[ 	]*[a-f0-9]+:	8f ea 48 12 06 34 12[ 	]+lwpins \$0x1234,\(%esi\),%si
+-[ 	]*[a-f0-9]+:	8f ea 40 12 07 34 12[ 	]+lwpins \$0x1234,\(%edi\),%di
+-[ 	]*[a-f0-9]+:	8f ea 7c 12 07 78 56 34 12[ 	]+lwpins \$0x12345678,\(%edi\),%eax
+-[ 	]*[a-f0-9]+:	8f ea 74 12 06 78 56 34 12[ 	]+lwpins \$0x12345678,\(%esi\),%ecx
+-[ 	]*[a-f0-9]+:	8f ea 6c 12 45 00 78 56 34 12[ 	]+lwpins \$0x12345678,0x0\(%ebp\),%edx
+-[ 	]*[a-f0-9]+:	8f ea 64 12 04 24 78 56 34 12[ 	]+lwpins \$0x12345678,\(%esp\),%ebx
+-[ 	]*[a-f0-9]+:	8f ea 5c 12 03 78 56 34 12[ 	]+lwpins \$0x12345678,\(%ebx\),%esp
+-[ 	]*[a-f0-9]+:	8f ea 54 12 02 78 56 34 12[ 	]+lwpins \$0x12345678,\(%edx\),%ebp
+-[ 	]*[a-f0-9]+:	8f ea 4c 12 01 78 56 34 12[ 	]+lwpins \$0x12345678,\(%ecx\),%esi
+-[ 	]*[a-f0-9]+:	8f ea 44 12 00 78 56 34 12[ 	]+lwpins \$0x12345678,\(%eax\),%edi
+-[ 	]*[a-f0-9]+:	8f ea 78 12 08 34 12[ 	]+lwpval \$0x1234,\(%eax\),%ax
+-[ 	]*[a-f0-9]+:	8f ea 70 12 09 34 12[ 	]+lwpval \$0x1234,\(%ecx\),%cx
+-[ 	]*[a-f0-9]+:	8f ea 68 12 0a 34 12[ 	]+lwpval \$0x1234,\(%edx\),%dx
+-[ 	]*[a-f0-9]+:	8f ea 60 12 0b 34 12[ 	]+lwpval \$0x1234,\(%ebx\),%bx
+-[ 	]*[a-f0-9]+:	8f ea 58 12 0c 24 34 12[ 	]+lwpval \$0x1234,\(%esp\),%sp
+-[ 	]*[a-f0-9]+:	8f ea 50 12 4d 00 34 12[ 	]+lwpval \$0x1234,0x0\(%ebp\),%bp
+-[ 	]*[a-f0-9]+:	8f ea 48 12 0e 34 12[ 	]+lwpval \$0x1234,\(%esi\),%si
+-[ 	]*[a-f0-9]+:	8f ea 40 12 0f 34 12[ 	]+lwpval \$0x1234,\(%edi\),%di
+-[ 	]*[a-f0-9]+:	8f ea 7c 12 0f 78 56 34 12[ 	]+lwpval \$0x12345678,\(%edi\),%eax
+-[ 	]*[a-f0-9]+:	8f ea 74 12 0e 78 56 34 12[ 	]+lwpval \$0x12345678,\(%esi\),%ecx
+-[ 	]*[a-f0-9]+:	8f ea 6c 12 4d 00 78 56 34 12[ 	]+lwpval \$0x12345678,0x0\(%ebp\),%edx
+-[ 	]*[a-f0-9]+:	8f ea 64 12 0c 24 78 56 34 12[ 	]+lwpval \$0x12345678,\(%esp\),%ebx
+-[ 	]*[a-f0-9]+:	8f ea 5c 12 0b 78 56 34 12[ 	]+lwpval \$0x12345678,\(%ebx\),%esp
+-[ 	]*[a-f0-9]+:	8f ea 54 12 0a 78 56 34 12[ 	]+lwpval \$0x12345678,\(%edx\),%ebp
+-[ 	]*[a-f0-9]+:	8f ea 4c 12 09 78 56 34 12[ 	]+lwpval \$0x12345678,\(%ecx\),%esi
+-[ 	]*[a-f0-9]+:	8f ea 44 12 08 78 56 34 12[ 	]+lwpval \$0x12345678,\(%eax\),%edi
+-[ 	]*[a-f0-9]+:	8f ea 78 12 80 fe ca 00 00 34 12[ 	]+lwpins \$0x1234,0xcafe\(%eax\),%ax
+-[ 	]*[a-f0-9]+:	8f ea 70 12 81 fe ca 00 00 34 12[ 	]+lwpins \$0x1234,0xcafe\(%ecx\),%cx
+-[ 	]*[a-f0-9]+:	8f ea 68 12 82 fe ca 00 00 34 12[ 	]+lwpins \$0x1234,0xcafe\(%edx\),%dx
+-[ 	]*[a-f0-9]+:	8f ea 60 12 83 fe ca 00 00 34 12[ 	]+lwpins \$0x1234,0xcafe\(%ebx\),%bx
+-[ 	]*[a-f0-9]+:	8f ea 58 12 84 24 fe ca 00 00 34 12[ 	]+lwpins \$0x1234,0xcafe\(%esp\),%sp
+-[ 	]*[a-f0-9]+:	8f ea 50 12 85 fe ca 00 00 34 12[ 	]+lwpins \$0x1234,0xcafe\(%ebp\),%bp
+-[ 	]*[a-f0-9]+:	8f ea 48 12 86 fe ca 00 00 34 12[ 	]+lwpins \$0x1234,0xcafe\(%esi\),%si
+-[ 	]*[a-f0-9]+:	8f ea 40 12 87 fe ca 00 00 34 12[ 	]+lwpins \$0x1234,0xcafe\(%edi\),%di
+-[ 	]*[a-f0-9]+:	8f ea 7c 12 87 fe ca 00 00 78 56 34 12[ 	]+lwpins \$0x12345678,0xcafe\(%edi\),%eax
+-[ 	]*[a-f0-9]+:	8f ea 74 12 86 fe ca 00 00 78 56 34 12[ 	]+lwpins \$0x12345678,0xcafe\(%esi\),%ecx
+-[ 	]*[a-f0-9]+:	8f ea 6c 12 85 fe ca 00 00 78 56 34 12[ 	]+lwpins \$0x12345678,0xcafe\(%ebp\),%edx
+-[ 	]*[a-f0-9]+:	8f ea 64 12 84 24 fe ca 00 00 78 56 34 12[ 	]+lwpins \$0x12345678,0xcafe\(%esp\),%ebx
+-[ 	]*[a-f0-9]+:	8f ea 5c 12 83 fe ca 00 00 78 56 34 12[ 	]+lwpins \$0x12345678,0xcafe\(%ebx\),%esp
+-[ 	]*[a-f0-9]+:	8f ea 54 12 82 fe ca 00 00 78 56 34 12[ 	]+lwpins \$0x12345678,0xcafe\(%edx\),%ebp
+-[ 	]*[a-f0-9]+:	8f ea 4c 12 81 fe ca 00 00 78 56 34 12[ 	]+lwpins \$0x12345678,0xcafe\(%ecx\),%esi
+-[ 	]*[a-f0-9]+:	8f ea 44 12 80 fe ca 00 00 78 56 34 12[ 	]+lwpins \$0x12345678,0xcafe\(%eax\),%edi
+-[ 	]*[a-f0-9]+:	8f ea 78 12 88 fe ca 00 00 34 12[ 	]+lwpval \$0x1234,0xcafe\(%eax\),%ax
+-[ 	]*[a-f0-9]+:	8f ea 70 12 89 fe ca 00 00 34 12[ 	]+lwpval \$0x1234,0xcafe\(%ecx\),%cx
+-[ 	]*[a-f0-9]+:	8f ea 68 12 8a fe ca 00 00 34 12[ 	]+lwpval \$0x1234,0xcafe\(%edx\),%dx
+-[ 	]*[a-f0-9]+:	8f ea 60 12 8b fe ca 00 00 34 12[ 	]+lwpval \$0x1234,0xcafe\(%ebx\),%bx
+-[ 	]*[a-f0-9]+:	8f ea 58 12 8c 24 fe ca 00 00 34 12[ 	]+lwpval \$0x1234,0xcafe\(%esp\),%sp
+-[ 	]*[a-f0-9]+:	8f ea 50 12 8d fe ca 00 00 34 12[ 	]+lwpval \$0x1234,0xcafe\(%ebp\),%bp
+-[ 	]*[a-f0-9]+:	8f ea 48 12 8e fe ca 00 00 34 12[ 	]+lwpval \$0x1234,0xcafe\(%esi\),%si
+-[ 	]*[a-f0-9]+:	8f ea 40 12 8f fe ca 00 00 34 12[ 	]+lwpval \$0x1234,0xcafe\(%edi\),%di
+-[ 	]*[a-f0-9]+:	8f ea 7c 12 8f fe ca 00 00 78 56 34 12[ 	]+lwpval \$0x12345678,0xcafe\(%edi\),%eax
+-[ 	]*[a-f0-9]+:	8f ea 74 12 8e fe ca 00 00 78 56 34 12[ 	]+lwpval \$0x12345678,0xcafe\(%esi\),%ecx
+-[ 	]*[a-f0-9]+:	8f ea 6c 12 8d fe ca 00 00 78 56 34 12[ 	]+lwpval \$0x12345678,0xcafe\(%ebp\),%edx
+-[ 	]*[a-f0-9]+:	8f ea 64 12 8c 24 fe ca 00 00 78 56 34 12[ 	]+lwpval \$0x12345678,0xcafe\(%esp\),%ebx
+-[ 	]*[a-f0-9]+:	8f ea 5c 12 8b fe ca 00 00 78 56 34 12[ 	]+lwpval \$0x12345678,0xcafe\(%ebx\),%esp
+-[ 	]*[a-f0-9]+:	8f ea 54 12 8a fe ca 00 00 78 56 34 12[ 	]+lwpval \$0x12345678,0xcafe\(%edx\),%ebp
+-[ 	]*[a-f0-9]+:	8f ea 4c 12 89 fe ca 00 00 78 56 34 12[ 	]+lwpval \$0x12345678,0xcafe\(%ecx\),%esi
+-[ 	]*[a-f0-9]+:	8f ea 44 12 88 fe ca 00 00 78 56 34 12[ 	]+lwpval \$0x12345678,0xcafe\(%eax\),%edi
++[ 	]*[a-f0-9]+:	8f e9 78 12 c0[ 	]+llwpcb %eax
++[ 	]*[a-f0-9]+:	8f e9 78 12 c1[ 	]+llwpcb %ecx
++[ 	]*[a-f0-9]+:	8f e9 78 12 c2[ 	]+llwpcb %edx
++[ 	]*[a-f0-9]+:	8f e9 78 12 c3[ 	]+llwpcb %ebx
++[ 	]*[a-f0-9]+:	8f e9 78 12 c4[ 	]+llwpcb %esp
++[ 	]*[a-f0-9]+:	8f e9 78 12 c5[ 	]+llwpcb %ebp
++[ 	]*[a-f0-9]+:	8f e9 78 12 c6[ 	]+llwpcb %esi
++[ 	]*[a-f0-9]+:	8f e9 78 12 c7[ 	]+llwpcb %edi
++[ 	]*[a-f0-9]+:	8f e9 78 12 cf[ 	]+slwpcb %edi
++[ 	]*[a-f0-9]+:	8f e9 78 12 ce[ 	]+slwpcb %esi
++[ 	]*[a-f0-9]+:	8f e9 78 12 cd[ 	]+slwpcb %ebp
++[ 	]*[a-f0-9]+:	8f e9 78 12 cc[ 	]+slwpcb %esp
++[ 	]*[a-f0-9]+:	8f e9 78 12 cb[ 	]+slwpcb %ebx
++[ 	]*[a-f0-9]+:	8f e9 78 12 ca[ 	]+slwpcb %edx
++[ 	]*[a-f0-9]+:	8f e9 78 12 c9[ 	]+slwpcb %ecx
++[ 	]*[a-f0-9]+:	8f e9 78 12 c8[ 	]+slwpcb %eax
++[ 	]*[a-f0-9]+:	8f ea 78 12 c7 78 56 34 12[ 	]+lwpins \$0x12345678,%edi,%eax
++[ 	]*[a-f0-9]+:	8f ea 70 12 c6 78 56 34 12[ 	]+lwpins \$0x12345678,%esi,%ecx
++[ 	]*[a-f0-9]+:	8f ea 68 12 c5 78 56 34 12[ 	]+lwpins \$0x12345678,%ebp,%edx
++[ 	]*[a-f0-9]+:	8f ea 60 12 c4 78 56 34 12[ 	]+lwpins \$0x12345678,%esp,%ebx
++[ 	]*[a-f0-9]+:	8f ea 58 12 c3 78 56 34 12[ 	]+lwpins \$0x12345678,%ebx,%esp
++[ 	]*[a-f0-9]+:	8f ea 50 12 c2 78 56 34 12[ 	]+lwpins \$0x12345678,%edx,%ebp
++[ 	]*[a-f0-9]+:	8f ea 48 12 c1 78 56 34 12[ 	]+lwpins \$0x12345678,%ecx,%esi
++[ 	]*[a-f0-9]+:	8f ea 40 12 c0 78 56 34 12[ 	]+lwpins \$0x12345678,%eax,%edi
++[ 	]*[a-f0-9]+:	8f ea 78 12 cf 78 56 34 12[ 	]+lwpval \$0x12345678,%edi,%eax
++[ 	]*[a-f0-9]+:	8f ea 70 12 ce 78 56 34 12[ 	]+lwpval \$0x12345678,%esi,%ecx
++[ 	]*[a-f0-9]+:	8f ea 68 12 cd 78 56 34 12[ 	]+lwpval \$0x12345678,%ebp,%edx
++[ 	]*[a-f0-9]+:	8f ea 60 12 cc 78 56 34 12[ 	]+lwpval \$0x12345678,%esp,%ebx
++[ 	]*[a-f0-9]+:	8f ea 58 12 cb 78 56 34 12[ 	]+lwpval \$0x12345678,%ebx,%esp
++[ 	]*[a-f0-9]+:	8f ea 50 12 ca 78 56 34 12[ 	]+lwpval \$0x12345678,%edx,%ebp
++[ 	]*[a-f0-9]+:	8f ea 48 12 c9 78 56 34 12[ 	]+lwpval \$0x12345678,%ecx,%esi
++[ 	]*[a-f0-9]+:	8f ea 40 12 c8 78 56 34 12[ 	]+lwpval \$0x12345678,%eax,%edi
++[ 	]*[a-f0-9]+:	8f ea 78 12 07 78 56 34 12[ 	]+lwpins \$0x12345678,\(%edi\),%eax
++[ 	]*[a-f0-9]+:	8f ea 70 12 06 78 56 34 12[ 	]+lwpins \$0x12345678,\(%esi\),%ecx
++[ 	]*[a-f0-9]+:	8f ea 68 12 45 00 78 56 34 12[ 	]+lwpins \$0x12345678,0x0\(%ebp\),%edx
++[ 	]*[a-f0-9]+:	8f ea 60 12 04 24 78 56 34 12[ 	]+lwpins \$0x12345678,\(%esp\),%ebx
++[ 	]*[a-f0-9]+:	8f ea 58 12 03 78 56 34 12[ 	]+lwpins \$0x12345678,\(%ebx\),%esp
++[ 	]*[a-f0-9]+:	8f ea 50 12 02 78 56 34 12[ 	]+lwpins \$0x12345678,\(%edx\),%ebp
++[ 	]*[a-f0-9]+:	8f ea 48 12 01 78 56 34 12[ 	]+lwpins \$0x12345678,\(%ecx\),%esi
++[ 	]*[a-f0-9]+:	8f ea 40 12 00 78 56 34 12[ 	]+lwpins \$0x12345678,\(%eax\),%edi
++[ 	]*[a-f0-9]+:	8f ea 78 12 0f 78 56 34 12[ 	]+lwpval \$0x12345678,\(%edi\),%eax
++[ 	]*[a-f0-9]+:	8f ea 70 12 0e 78 56 34 12[ 	]+lwpval \$0x12345678,\(%esi\),%ecx
++[ 	]*[a-f0-9]+:	8f ea 68 12 4d 00 78 56 34 12[ 	]+lwpval \$0x12345678,0x0\(%ebp\),%edx
++[ 	]*[a-f0-9]+:	8f ea 60 12 0c 24 78 56 34 12[ 	]+lwpval \$0x12345678,\(%esp\),%ebx
++[ 	]*[a-f0-9]+:	8f ea 58 12 0b 78 56 34 12[ 	]+lwpval \$0x12345678,\(%ebx\),%esp
++[ 	]*[a-f0-9]+:	8f ea 50 12 0a 78 56 34 12[ 	]+lwpval \$0x12345678,\(%edx\),%ebp
++[ 	]*[a-f0-9]+:	8f ea 48 12 09 78 56 34 12[ 	]+lwpval \$0x12345678,\(%ecx\),%esi
++[ 	]*[a-f0-9]+:	8f ea 40 12 08 78 56 34 12[ 	]+lwpval \$0x12345678,\(%eax\),%edi
++[ 	]*[a-f0-9]+:	8f ea 78 12 87 fe ca 00 00 78 56 34 12[ 	]+lwpins \$0x12345678,0xcafe\(%edi\),%eax
++[ 	]*[a-f0-9]+:	8f ea 70 12 86 fe ca 00 00 78 56 34 12[ 	]+lwpins \$0x12345678,0xcafe\(%esi\),%ecx
++[ 	]*[a-f0-9]+:	8f ea 68 12 85 fe ca 00 00 78 56 34 12[ 	]+lwpins \$0x12345678,0xcafe\(%ebp\),%edx
++[ 	]*[a-f0-9]+:	8f ea 60 12 84 24 fe ca 00 00 78 56 34 12[ 	]+lwpins \$0x12345678,0xcafe\(%esp\),%ebx
++[ 	]*[a-f0-9]+:	8f ea 58 12 83 fe ca 00 00 78 56 34 12[ 	]+lwpins \$0x12345678,0xcafe\(%ebx\),%esp
++[ 	]*[a-f0-9]+:	8f ea 50 12 82 fe ca 00 00 78 56 34 12[ 	]+lwpins \$0x12345678,0xcafe\(%edx\),%ebp
++[ 	]*[a-f0-9]+:	8f ea 48 12 81 fe ca 00 00 78 56 34 12[ 	]+lwpins \$0x12345678,0xcafe\(%ecx\),%esi
++[ 	]*[a-f0-9]+:	8f ea 40 12 80 fe ca 00 00 78 56 34 12[ 	]+lwpins \$0x12345678,0xcafe\(%eax\),%edi
++[ 	]*[a-f0-9]+:	8f ea 78 12 8f fe ca 00 00 78 56 34 12[ 	]+lwpval \$0x12345678,0xcafe\(%edi\),%eax
++[ 	]*[a-f0-9]+:	8f ea 70 12 8e fe ca 00 00 78 56 34 12[ 	]+lwpval \$0x12345678,0xcafe\(%esi\),%ecx
++[ 	]*[a-f0-9]+:	8f ea 68 12 8d fe ca 00 00 78 56 34 12[ 	]+lwpval \$0x12345678,0xcafe\(%ebp\),%edx
++[ 	]*[a-f0-9]+:	8f ea 60 12 8c 24 fe ca 00 00 78 56 34 12[ 	]+lwpval \$0x12345678,0xcafe\(%esp\),%ebx
++[ 	]*[a-f0-9]+:	8f ea 58 12 8b fe ca 00 00 78 56 34 12[ 	]+lwpval \$0x12345678,0xcafe\(%ebx\),%esp
++[ 	]*[a-f0-9]+:	8f ea 50 12 8a fe ca 00 00 78 56 34 12[ 	]+lwpval \$0x12345678,0xcafe\(%edx\),%ebp
++[ 	]*[a-f0-9]+:	8f ea 48 12 89 fe ca 00 00 78 56 34 12[ 	]+lwpval \$0x12345678,0xcafe\(%ecx\),%esi
++[ 	]*[a-f0-9]+:	8f ea 40 12 88 fe ca 00 00 78 56 34 12[ 	]+lwpval \$0x12345678,0xcafe\(%eax\),%edi
+ #pass
+Index: binutils-2.20.51.0.2/gas/testsuite/gas/i386/lwp.s
+===================================================================
+--- binutils-2.20.51.0.2.orig/gas/testsuite/gas/i386/lwp.s
++++ binutils-2.20.51.0.2/gas/testsuite/gas/i386/lwp.s
+@@ -4,14 +4,6 @@
+ 	.text
+ _start:
+ 
+-	llwpcb %ax
+-	llwpcb %cx
+-	llwpcb %dx
+-	llwpcb %bx
+-	llwpcb %sp
+-	llwpcb %bp
+-	llwpcb %si
+-	llwpcb %di
+ 	llwpcb %eax
+ 	llwpcb %ecx
+ 	llwpcb %edx
+@@ -29,23 +21,7 @@ _start:
+ 	slwpcb %edx
+ 	slwpcb %ecx
+ 	slwpcb %eax
+-	slwpcb %di
+-	slwpcb %si
+-	slwpcb %bp
+-	slwpcb %sp
+-	slwpcb %bx
+-	slwpcb %dx
+-	slwpcb %cx
+-	slwpcb %ax
+-
+-	lwpins $0x1234, %eax, %ax
+-	lwpins $0x1234, %ecx, %cx
+-	lwpins $0x1234, %edx, %dx
+-	lwpins $0x1234, %ebx, %bx
+-	lwpins $0x1234, %esp, %sp
+-	lwpins $0x1234, %ebp, %bp
+-	lwpins $0x1234, %esi, %si
+-	lwpins $0x1234, %edi, %di
++
+ 	lwpins $0x12345678, %edi, %eax
+ 	lwpins $0x12345678, %esi, %ecx
+ 	lwpins $0x12345678, %ebp, %edx
+@@ -55,14 +31,6 @@ _start:
+ 	lwpins $0x12345678, %ecx, %esi
+ 	lwpins $0x12345678, %eax, %edi
+ 
+-	lwpval $0x1234, %eax, %ax
+-	lwpval $0x1234, %ecx, %cx
+-	lwpval $0x1234, %edx, %dx
+-	lwpval $0x1234, %ebx, %bx
+-	lwpval $0x1234, %esp, %sp
+-	lwpval $0x1234, %ebp, %bp
+-	lwpval $0x1234, %esi, %si
+-	lwpval $0x1234, %edi, %di
+ 	lwpval $0x12345678, %edi, %eax
+ 	lwpval $0x12345678, %esi, %ecx
+ 	lwpval $0x12345678, %ebp, %edx
+@@ -72,14 +40,6 @@ _start:
+ 	lwpval $0x12345678, %ecx, %esi
+ 	lwpval $0x12345678, %eax, %edi
+ 
+-	lwpins $0x1234, (%eax), %ax
+-	lwpins $0x1234, (%ecx), %cx
+-	lwpins $0x1234, (%edx), %dx
+-	lwpins $0x1234, (%ebx), %bx
+-	lwpins $0x1234, (%esp), %sp
+-	lwpins $0x1234, (%ebp), %bp
+-	lwpins $0x1234, (%esi), %si
+-	lwpins $0x1234, (%edi), %di
+ 	lwpins $0x12345678, (%edi), %eax
+ 	lwpins $0x12345678, (%esi), %ecx
+ 	lwpins $0x12345678, (%ebp), %edx
+@@ -89,14 +49,6 @@ _start:
+ 	lwpins $0x12345678, (%ecx), %esi
+ 	lwpins $0x12345678, (%eax), %edi
+ 
+-	lwpval $0x1234, (%eax), %ax
+-	lwpval $0x1234, (%ecx), %cx
+-	lwpval $0x1234, (%edx), %dx
+-	lwpval $0x1234, (%ebx), %bx
+-	lwpval $0x1234, (%esp), %sp
+-	lwpval $0x1234, (%ebp), %bp
+-	lwpval $0x1234, (%esi), %si
+-	lwpval $0x1234, (%edi), %di
+ 	lwpval $0x12345678, (%edi), %eax
+ 	lwpval $0x12345678, (%esi), %ecx
+ 	lwpval $0x12345678, (%ebp), %edx
+@@ -106,14 +58,6 @@ _start:
+ 	lwpval $0x12345678, (%ecx), %esi
+ 	lwpval $0x12345678, (%eax), %edi
+ 
+-	lwpins $0x1234, 0xcafe(%eax), %ax
+-	lwpins $0x1234, 0xcafe(%ecx), %cx
+-	lwpins $0x1234, 0xcafe(%edx), %dx
+-	lwpins $0x1234, 0xcafe(%ebx), %bx
+-	lwpins $0x1234, 0xcafe(%esp), %sp
+-	lwpins $0x1234, 0xcafe(%ebp), %bp
+-	lwpins $0x1234, 0xcafe(%esi), %si
+-	lwpins $0x1234, 0xcafe(%edi), %di
+ 	lwpins $0x12345678, 0xcafe(%edi), %eax
+ 	lwpins $0x12345678, 0xcafe(%esi), %ecx
+ 	lwpins $0x12345678, 0xcafe(%ebp), %edx
+@@ -123,14 +67,6 @@ _start:
+ 	lwpins $0x12345678, 0xcafe(%ecx), %esi
+ 	lwpins $0x12345678, 0xcafe(%eax), %edi
+ 
+-	lwpval $0x1234, 0xcafe(%eax), %ax
+-	lwpval $0x1234, 0xcafe(%ecx), %cx
+-	lwpval $0x1234, 0xcafe(%edx), %dx
+-	lwpval $0x1234, 0xcafe(%ebx), %bx
+-	lwpval $0x1234, 0xcafe(%esp), %sp
+-	lwpval $0x1234, 0xcafe(%ebp), %bp
+-	lwpval $0x1234, 0xcafe(%esi), %si
+-	lwpval $0x1234, 0xcafe(%edi), %di
+ 	lwpval $0x12345678, 0xcafe(%edi), %eax
+ 	lwpval $0x12345678, 0xcafe(%esi), %ecx
+ 	lwpval $0x12345678, 0xcafe(%ebp), %edx
+Index: binutils-2.20.51.0.2/gas/testsuite/gas/i386/x86-64-lwp.d
+===================================================================
+--- binutils-2.20.51.0.2.orig/gas/testsuite/gas/i386/x86-64-lwp.d
++++ binutils-2.20.51.0.2/gas/testsuite/gas/i386/x86-64-lwp.d
+@@ -6,38 +6,22 @@
+ Disassembly of section .text:
+ 
+ 0+ <_start>:
+-[ 	]*[a-f0-9]+:	8f e9 78 12 c0[ 	]+llwpcb %ax
+-[ 	]*[a-f0-9]+:	8f e9 78 12 c1[ 	]+llwpcb %cx
+-[ 	]*[a-f0-9]+:	8f e9 78 12 c2[ 	]+llwpcb %dx
+-[ 	]*[a-f0-9]+:	8f e9 78 12 c3[ 	]+llwpcb %bx
+-[ 	]*[a-f0-9]+:	8f e9 78 12 c4[ 	]+llwpcb %sp
+-[ 	]*[a-f0-9]+:	8f e9 78 12 c5[ 	]+llwpcb %bp
+-[ 	]*[a-f0-9]+:	8f e9 78 12 c6[ 	]+llwpcb %si
+-[ 	]*[a-f0-9]+:	8f e9 78 12 c7[ 	]+llwpcb %di
+-[ 	]*[a-f0-9]+:	8f c9 78 12 c0[ 	]+llwpcb %r8w
+-[ 	]*[a-f0-9]+:	8f c9 78 12 c1[ 	]+llwpcb %r9w
+-[ 	]*[a-f0-9]+:	8f c9 78 12 c2[ 	]+llwpcb %r10w
+-[ 	]*[a-f0-9]+:	8f c9 78 12 c3[ 	]+llwpcb %r11w
+-[ 	]*[a-f0-9]+:	8f c9 78 12 c4[ 	]+llwpcb %r12w
+-[ 	]*[a-f0-9]+:	8f c9 78 12 c5[ 	]+llwpcb %r13w
+-[ 	]*[a-f0-9]+:	8f c9 78 12 c6[ 	]+llwpcb %r14w
+-[ 	]*[a-f0-9]+:	8f c9 78 12 c7[ 	]+llwpcb %r15w
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 c0[ 	]+llwpcb %eax
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 c1[ 	]+llwpcb %ecx
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 c2[ 	]+llwpcb %edx
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 c3[ 	]+llwpcb %ebx
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 c4[ 	]+llwpcb %esp
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 c5[ 	]+llwpcb %ebp
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 c6[ 	]+llwpcb %esi
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 c7[ 	]+llwpcb %edi
+-[ 	]*[a-f0-9]+:	8f c9 7c 12 c0[ 	]+llwpcb %r8d
+-[ 	]*[a-f0-9]+:	8f c9 7c 12 c1[ 	]+llwpcb %r9d
+-[ 	]*[a-f0-9]+:	8f c9 7c 12 c2[ 	]+llwpcb %r10d
+-[ 	]*[a-f0-9]+:	8f c9 7c 12 c3[ 	]+llwpcb %r11d
+-[ 	]*[a-f0-9]+:	8f c9 7c 12 c4[ 	]+llwpcb %r12d
+-[ 	]*[a-f0-9]+:	8f c9 7c 12 c5[ 	]+llwpcb %r13d
+-[ 	]*[a-f0-9]+:	8f c9 7c 12 c6[ 	]+llwpcb %r14d
+-[ 	]*[a-f0-9]+:	8f c9 7c 12 c7[ 	]+llwpcb %r15d
++[ 	]*[a-f0-9]+:	8f e9 78 12 c0[ 	]+llwpcb %eax
++[ 	]*[a-f0-9]+:	8f e9 78 12 c1[ 	]+llwpcb %ecx
++[ 	]*[a-f0-9]+:	8f e9 78 12 c2[ 	]+llwpcb %edx
++[ 	]*[a-f0-9]+:	8f e9 78 12 c3[ 	]+llwpcb %ebx
++[ 	]*[a-f0-9]+:	8f e9 78 12 c4[ 	]+llwpcb %esp
++[ 	]*[a-f0-9]+:	8f e9 78 12 c5[ 	]+llwpcb %ebp
++[ 	]*[a-f0-9]+:	8f e9 78 12 c6[ 	]+llwpcb %esi
++[ 	]*[a-f0-9]+:	8f e9 78 12 c7[ 	]+llwpcb %edi
++[ 	]*[a-f0-9]+:	8f c9 78 12 c0[ 	]+llwpcb %r8d
++[ 	]*[a-f0-9]+:	8f c9 78 12 c1[ 	]+llwpcb %r9d
++[ 	]*[a-f0-9]+:	8f c9 78 12 c2[ 	]+llwpcb %r10d
++[ 	]*[a-f0-9]+:	8f c9 78 12 c3[ 	]+llwpcb %r11d
++[ 	]*[a-f0-9]+:	8f c9 78 12 c4[ 	]+llwpcb %r12d
++[ 	]*[a-f0-9]+:	8f c9 78 12 c5[ 	]+llwpcb %r13d
++[ 	]*[a-f0-9]+:	8f c9 78 12 c6[ 	]+llwpcb %r14d
++[ 	]*[a-f0-9]+:	8f c9 78 12 c7[ 	]+llwpcb %r15d
+ [ 	]*[a-f0-9]+:	8f e9 f8 12 c0[ 	]+llwpcb %rax
+ [ 	]*[a-f0-9]+:	8f e9 f8 12 c1[ 	]+llwpcb %rcx
+ [ 	]*[a-f0-9]+:	8f e9 f8 12 c2[ 	]+llwpcb %rdx
+@@ -70,70 +54,38 @@ Disassembly of section .text:
+ [ 	]*[a-f0-9]+:	8f e9 f8 12 ca[ 	]+slwpcb %rdx
+ [ 	]*[a-f0-9]+:	8f e9 f8 12 c9[ 	]+slwpcb %rcx
+ [ 	]*[a-f0-9]+:	8f e9 f8 12 c8[ 	]+slwpcb %rax
+-[ 	]*[a-f0-9]+:	8f c9 7c 12 cf[ 	]+slwpcb %r15d
+-[ 	]*[a-f0-9]+:	8f c9 7c 12 ce[ 	]+slwpcb %r14d
+-[ 	]*[a-f0-9]+:	8f c9 7c 12 cd[ 	]+slwpcb %r13d
+-[ 	]*[a-f0-9]+:	8f c9 7c 12 cc[ 	]+slwpcb %r12d
+-[ 	]*[a-f0-9]+:	8f c9 7c 12 cb[ 	]+slwpcb %r11d
+-[ 	]*[a-f0-9]+:	8f c9 7c 12 ca[ 	]+slwpcb %r10d
+-[ 	]*[a-f0-9]+:	8f c9 7c 12 c9[ 	]+slwpcb %r9d
+-[ 	]*[a-f0-9]+:	8f c9 7c 12 c8[ 	]+slwpcb %r8d
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 cf[ 	]+slwpcb %edi
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 ce[ 	]+slwpcb %esi
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 cd[ 	]+slwpcb %ebp
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 cc[ 	]+slwpcb %esp
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 cb[ 	]+slwpcb %ebx
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 ca[ 	]+slwpcb %edx
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 c9[ 	]+slwpcb %ecx
+-[ 	]*[a-f0-9]+:	8f e9 7c 12 c8[ 	]+slwpcb %eax
+-[ 	]*[a-f0-9]+:	8f c9 78 12 cf[ 	]+slwpcb %r15w
+-[ 	]*[a-f0-9]+:	8f c9 78 12 ce[ 	]+slwpcb %r14w
+-[ 	]*[a-f0-9]+:	8f c9 78 12 cd[ 	]+slwpcb %r13w
+-[ 	]*[a-f0-9]+:	8f c9 78 12 cc[ 	]+slwpcb %r12w
+-[ 	]*[a-f0-9]+:	8f c9 78 12 cb[ 	]+slwpcb %r11w
+-[ 	]*[a-f0-9]+:	8f c9 78 12 ca[ 	]+slwpcb %r10w
+-[ 	]*[a-f0-9]+:	8f c9 78 12 c9[ 	]+slwpcb %r9w
+-[ 	]*[a-f0-9]+:	8f c9 78 12 c8[ 	]+slwpcb %r8w
+-[ 	]*[a-f0-9]+:	8f e9 78 12 cf[ 	]+slwpcb %di
+-[ 	]*[a-f0-9]+:	8f e9 78 12 ce[ 	]+slwpcb %si
+-[ 	]*[a-f0-9]+:	8f e9 78 12 cd[ 	]+slwpcb %bp
+-[ 	]*[a-f0-9]+:	8f e9 78 12 cc[ 	]+slwpcb %sp
+-[ 	]*[a-f0-9]+:	8f e9 78 12 cb[ 	]+slwpcb %bx
+-[ 	]*[a-f0-9]+:	8f e9 78 12 ca[ 	]+slwpcb %dx
+-[ 	]*[a-f0-9]+:	8f e9 78 12 c9[ 	]+slwpcb %cx
+-[ 	]*[a-f0-9]+:	8f e9 78 12 c8[ 	]+slwpcb %ax
+-[ 	]*[a-f0-9]+:	8f ea 78 12 c0 34 12[ 	]+lwpins \$0x1234,%eax,%ax
+-[ 	]*[a-f0-9]+:	8f ea 70 12 c1 34 12[ 	]+lwpins \$0x1234,%ecx,%cx
+-[ 	]*[a-f0-9]+:	8f ea 68 12 c2 34 12[ 	]+lwpins \$0x1234,%edx,%dx
+-[ 	]*[a-f0-9]+:	8f ea 60 12 c3 34 12[ 	]+lwpins \$0x1234,%ebx,%bx
+-[ 	]*[a-f0-9]+:	8f ea 58 12 c4 34 12[ 	]+lwpins \$0x1234,%esp,%sp
+-[ 	]*[a-f0-9]+:	8f ea 50 12 c5 34 12[ 	]+lwpins \$0x1234,%ebp,%bp
+-[ 	]*[a-f0-9]+:	8f ea 48 12 c6 34 12[ 	]+lwpins \$0x1234,%esi,%si
+-[ 	]*[a-f0-9]+:	8f ea 40 12 c7 34 12[ 	]+lwpins \$0x1234,%edi,%di
+-[ 	]*[a-f0-9]+:	8f ca 38 12 c0 34 12[ 	]+lwpins \$0x1234,%r8d,%r8w
+-[ 	]*[a-f0-9]+:	8f ca 30 12 c1 34 12[ 	]+lwpins \$0x1234,%r9d,%r9w
+-[ 	]*[a-f0-9]+:	8f ca 28 12 c2 34 12[ 	]+lwpins \$0x1234,%r10d,%r10w
+-[ 	]*[a-f0-9]+:	8f ca 20 12 c3 34 12[ 	]+lwpins \$0x1234,%r11d,%r11w
+-[ 	]*[a-f0-9]+:	8f ca 18 12 c4 34 12[ 	]+lwpins \$0x1234,%r12d,%r12w
+-[ 	]*[a-f0-9]+:	8f ca 10 12 c5 34 12[ 	]+lwpins \$0x1234,%r13d,%r13w
+-[ 	]*[a-f0-9]+:	8f ca 08 12 c6 34 12[ 	]+lwpins \$0x1234,%r14d,%r14w
+-[ 	]*[a-f0-9]+:	8f ca 00 12 c7 34 12[ 	]+lwpins \$0x1234,%r15d,%r15w
+-[ 	]*[a-f0-9]+:	8f ca 7c 12 c7 78 56 34 12[ 	]+lwpins \$0x12345678,%r15d,%eax
+-[ 	]*[a-f0-9]+:	8f ca 74 12 c6 78 56 34 12[ 	]+lwpins \$0x12345678,%r14d,%ecx
+-[ 	]*[a-f0-9]+:	8f ca 6c 12 c5 78 56 34 12[ 	]+lwpins \$0x12345678,%r13d,%edx
+-[ 	]*[a-f0-9]+:	8f ca 64 12 c4 78 56 34 12[ 	]+lwpins \$0x12345678,%r12d,%ebx
+-[ 	]*[a-f0-9]+:	8f ca 5c 12 c3 78 56 34 12[ 	]+lwpins \$0x12345678,%r11d,%esp
+-[ 	]*[a-f0-9]+:	8f ca 54 12 c2 78 56 34 12[ 	]+lwpins \$0x12345678,%r10d,%ebp
+-[ 	]*[a-f0-9]+:	8f ca 4c 12 c1 78 56 34 12[ 	]+lwpins \$0x12345678,%r9d,%esi
+-[ 	]*[a-f0-9]+:	8f ca 44 12 c0 78 56 34 12[ 	]+lwpins \$0x12345678,%r8d,%edi
+-[ 	]*[a-f0-9]+:	8f ea 3c 12 c7 78 56 34 12[ 	]+lwpins \$0x12345678,%edi,%r8d
+-[ 	]*[a-f0-9]+:	8f ea 34 12 c6 78 56 34 12[ 	]+lwpins \$0x12345678,%esi,%r9d
+-[ 	]*[a-f0-9]+:	8f ea 2c 12 c5 78 56 34 12[ 	]+lwpins \$0x12345678,%ebp,%r10d
+-[ 	]*[a-f0-9]+:	8f ea 24 12 c4 78 56 34 12[ 	]+lwpins \$0x12345678,%esp,%r11d
+-[ 	]*[a-f0-9]+:	8f ea 1c 12 c3 78 56 34 12[ 	]+lwpins \$0x12345678,%ebx,%r12d
+-[ 	]*[a-f0-9]+:	8f ea 14 12 c2 78 56 34 12[ 	]+lwpins \$0x12345678,%edx,%r13d
+-[ 	]*[a-f0-9]+:	8f ea 0c 12 c1 78 56 34 12[ 	]+lwpins \$0x12345678,%ecx,%r14d
+-[ 	]*[a-f0-9]+:	8f ea 04 12 c0 78 56 34 12[ 	]+lwpins \$0x12345678,%eax,%r15d
++[ 	]*[a-f0-9]+:	8f c9 78 12 cf[ 	]+slwpcb %r15d
++[ 	]*[a-f0-9]+:	8f c9 78 12 ce[ 	]+slwpcb %r14d
++[ 	]*[a-f0-9]+:	8f c9 78 12 cd[ 	]+slwpcb %r13d
++[ 	]*[a-f0-9]+:	8f c9 78 12 cc[ 	]+slwpcb %r12d
++[ 	]*[a-f0-9]+:	8f c9 78 12 cb[ 	]+slwpcb %r11d
++[ 	]*[a-f0-9]+:	8f c9 78 12 ca[ 	]+slwpcb %r10d
++[ 	]*[a-f0-9]+:	8f c9 78 12 c9[ 	]+slwpcb %r9d
++[ 	]*[a-f0-9]+:	8f c9 78 12 c8[ 	]+slwpcb %r8d
++[ 	]*[a-f0-9]+:	8f e9 78 12 cf[ 	]+slwpcb %edi
++[ 	]*[a-f0-9]+:	8f e9 78 12 ce[ 	]+slwpcb %esi
++[ 	]*[a-f0-9]+:	8f e9 78 12 cd[ 	]+slwpcb %ebp
++[ 	]*[a-f0-9]+:	8f e9 78 12 cc[ 	]+slwpcb %esp
++[ 	]*[a-f0-9]+:	8f e9 78 12 cb[ 	]+slwpcb %ebx
++[ 	]*[a-f0-9]+:	8f e9 78 12 ca[ 	]+slwpcb %edx
++[ 	]*[a-f0-9]+:	8f e9 78 12 c9[ 	]+slwpcb %ecx
++[ 	]*[a-f0-9]+:	8f e9 78 12 c8[ 	]+slwpcb %eax
++[ 	]*[a-f0-9]+:	8f ca 78 12 c7 78 56 34 12[ 	]+lwpins \$0x12345678,%r15d,%eax
++[ 	]*[a-f0-9]+:	8f ca 70 12 c6 78 56 34 12[ 	]+lwpins \$0x12345678,%r14d,%ecx
++[ 	]*[a-f0-9]+:	8f ca 68 12 c5 78 56 34 12[ 	]+lwpins \$0x12345678,%r13d,%edx
++[ 	]*[a-f0-9]+:	8f ca 60 12 c4 78 56 34 12[ 	]+lwpins \$0x12345678,%r12d,%ebx
++[ 	]*[a-f0-9]+:	8f ca 58 12 c3 78 56 34 12[ 	]+lwpins \$0x12345678,%r11d,%esp
++[ 	]*[a-f0-9]+:	8f ca 50 12 c2 78 56 34 12[ 	]+lwpins \$0x12345678,%r10d,%ebp
++[ 	]*[a-f0-9]+:	8f ca 48 12 c1 78 56 34 12[ 	]+lwpins \$0x12345678,%r9d,%esi
++[ 	]*[a-f0-9]+:	8f ca 40 12 c0 78 56 34 12[ 	]+lwpins \$0x12345678,%r8d,%edi
++[ 	]*[a-f0-9]+:	8f ea 38 12 c7 78 56 34 12[ 	]+lwpins \$0x12345678,%edi,%r8d
++[ 	]*[a-f0-9]+:	8f ea 30 12 c6 78 56 34 12[ 	]+lwpins \$0x12345678,%esi,%r9d
++[ 	]*[a-f0-9]+:	8f ea 28 12 c5 78 56 34 12[ 	]+lwpins \$0x12345678,%ebp,%r10d
++[ 	]*[a-f0-9]+:	8f ea 20 12 c4 78 56 34 12[ 	]+lwpins \$0x12345678,%esp,%r11d
++[ 	]*[a-f0-9]+:	8f ea 18 12 c3 78 56 34 12[ 	]+lwpins \$0x12345678,%ebx,%r12d
++[ 	]*[a-f0-9]+:	8f ea 10 12 c2 78 56 34 12[ 	]+lwpins \$0x12345678,%edx,%r13d
++[ 	]*[a-f0-9]+:	8f ea 08 12 c1 78 56 34 12[ 	]+lwpins \$0x12345678,%ecx,%r14d
++[ 	]*[a-f0-9]+:	8f ea 00 12 c0 78 56 34 12[ 	]+lwpins \$0x12345678,%eax,%r15d
+ [ 	]*[a-f0-9]+:	8f ca f8 12 c7 78 56 34 12[ 	]+lwpins \$0x12345678,%r15d,%rax
+ [ 	]*[a-f0-9]+:	8f ca f0 12 c6 78 56 34 12[ 	]+lwpins \$0x12345678,%r14d,%rcx
+ [ 	]*[a-f0-9]+:	8f ca e8 12 c5 78 56 34 12[ 	]+lwpins \$0x12345678,%r13d,%rdx
+@@ -150,38 +102,22 @@ Disassembly of section .text:
+ [ 	]*[a-f0-9]+:	8f ea 90 12 c5 78 56 34 12[ 	]+lwpins \$0x12345678,%ebp,%r13
+ [ 	]*[a-f0-9]+:	8f ea 88 12 c6 78 56 34 12[ 	]+lwpins \$0x12345678,%esi,%r14
+ [ 	]*[a-f0-9]+:	8f ea 80 12 c7 78 56 34 12[ 	]+lwpins \$0x12345678,%edi,%r15
+-[ 	]*[a-f0-9]+:	8f ea 78 12 c8 34 12[ 	]+lwpval \$0x1234,%eax,%ax
+-[ 	]*[a-f0-9]+:	8f ea 70 12 c9 34 12[ 	]+lwpval \$0x1234,%ecx,%cx
+-[ 	]*[a-f0-9]+:	8f ea 68 12 ca 34 12[ 	]+lwpval \$0x1234,%edx,%dx
+-[ 	]*[a-f0-9]+:	8f ea 60 12 cb 34 12[ 	]+lwpval \$0x1234,%ebx,%bx
+-[ 	]*[a-f0-9]+:	8f ea 58 12 cc 34 12[ 	]+lwpval \$0x1234,%esp,%sp
+-[ 	]*[a-f0-9]+:	8f ea 50 12 cd 34 12[ 	]+lwpval \$0x1234,%ebp,%bp
+-[ 	]*[a-f0-9]+:	8f ea 48 12 ce 34 12[ 	]+lwpval \$0x1234,%esi,%si
+-[ 	]*[a-f0-9]+:	8f ea 40 12 cf 34 12[ 	]+lwpval \$0x1234,%edi,%di
+-[ 	]*[a-f0-9]+:	8f ca 38 12 c8 34 12[ 	]+lwpval \$0x1234,%r8d,%r8w
+-[ 	]*[a-f0-9]+:	8f ca 30 12 c9 34 12[ 	]+lwpval \$0x1234,%r9d,%r9w
+-[ 	]*[a-f0-9]+:	8f ca 28 12 ca 34 12[ 	]+lwpval \$0x1234,%r10d,%r10w
+-[ 	]*[a-f0-9]+:	8f ca 20 12 cb 34 12[ 	]+lwpval \$0x1234,%r11d,%r11w
+-[ 	]*[a-f0-9]+:	8f ca 18 12 cc 34 12[ 	]+lwpval \$0x1234,%r12d,%r12w
+-[ 	]*[a-f0-9]+:	8f ca 10 12 cd 34 12[ 	]+lwpval \$0x1234,%r13d,%r13w
+-[ 	]*[a-f0-9]+:	8f ca 08 12 ce 34 12[ 	]+lwpval \$0x1234,%r14d,%r14w
+-[ 	]*[a-f0-9]+:	8f ca 00 12 cf 34 12[ 	]+lwpval \$0x1234,%r15d,%r15w
+-[ 	]*[a-f0-9]+:	8f ca 7c 12 cf 78 56 34 12[ 	]+lwpval \$0x12345678,%r15d,%eax
+-[ 	]*[a-f0-9]+:	8f ca 74 12 ce 78 56 34 12[ 	]+lwpval \$0x12345678,%r14d,%ecx
+-[ 	]*[a-f0-9]+:	8f ca 6c 12 cd 78 56 34 12[ 	]+lwpval \$0x12345678,%r13d,%edx
+-[ 	]*[a-f0-9]+:	8f ca 64 12 cc 78 56 34 12[ 	]+lwpval \$0x12345678,%r12d,%ebx
+-[ 	]*[a-f0-9]+:	8f ca 5c 12 cb 78 56 34 12[ 	]+lwpval \$0x12345678,%r11d,%esp
+-[ 	]*[a-f0-9]+:	8f ca 54 12 ca 78 56 34 12[ 	]+lwpval \$0x12345678,%r10d,%ebp
+-[ 	]*[a-f0-9]+:	8f ca 4c 12 c9 78 56 34 12[ 	]+lwpval \$0x12345678,%r9d,%esi
+-[ 	]*[a-f0-9]+:	8f ca 44 12 c8 78 56 34 12[ 	]+lwpval \$0x12345678,%r8d,%edi
+-[ 	]*[a-f0-9]+:	8f ea 3c 12 cf 78 56 34 12[ 	]+lwpval \$0x12345678,%edi,%r8d
+-[ 	]*[a-f0-9]+:	8f ea 34 12 ce 78 56 34 12[ 	]+lwpval \$0x12345678,%esi,%r9d
+-[ 	]*[a-f0-9]+:	8f ea 2c 12 cd 78 56 34 12[ 	]+lwpval \$0x12345678,%ebp,%r10d
+-[ 	]*[a-f0-9]+:	8f ea 24 12 cc 78 56 34 12[ 	]+lwpval \$0x12345678,%esp,%r11d
+-[ 	]*[a-f0-9]+:	8f ea 1c 12 cb 78 56 34 12[ 	]+lwpval \$0x12345678,%ebx,%r12d
+-[ 	]*[a-f0-9]+:	8f ea 14 12 ca 78 56 34 12[ 	]+lwpval \$0x12345678,%edx,%r13d
+-[ 	]*[a-f0-9]+:	8f ea 0c 12 c9 78 56 34 12[ 	]+lwpval \$0x12345678,%ecx,%r14d
+-[ 	]*[a-f0-9]+:	8f ea 04 12 c8 78 56 34 12[ 	]+lwpval \$0x12345678,%eax,%r15d
++[ 	]*[a-f0-9]+:	8f ca 78 12 cf 78 56 34 12[ 	]+lwpval \$0x12345678,%r15d,%eax
++[ 	]*[a-f0-9]+:	8f ca 70 12 ce 78 56 34 12[ 	]+lwpval \$0x12345678,%r14d,%ecx
++[ 	]*[a-f0-9]+:	8f ca 68 12 cd 78 56 34 12[ 	]+lwpval \$0x12345678,%r13d,%edx
++[ 	]*[a-f0-9]+:	8f ca 60 12 cc 78 56 34 12[ 	]+lwpval \$0x12345678,%r12d,%ebx
++[ 	]*[a-f0-9]+:	8f ca 58 12 cb 78 56 34 12[ 	]+lwpval \$0x12345678,%r11d,%esp
++[ 	]*[a-f0-9]+:	8f ca 50 12 ca 78 56 34 12[ 	]+lwpval \$0x12345678,%r10d,%ebp
++[ 	]*[a-f0-9]+:	8f ca 48 12 c9 78 56 34 12[ 	]+lwpval \$0x12345678,%r9d,%esi
++[ 	]*[a-f0-9]+:	8f ca 40 12 c8 78 56 34 12[ 	]+lwpval \$0x12345678,%r8d,%edi
++[ 	]*[a-f0-9]+:	8f ea 38 12 cf 78 56 34 12[ 	]+lwpval \$0x12345678,%edi,%r8d
++[ 	]*[a-f0-9]+:	8f ea 30 12 ce 78 56 34 12[ 	]+lwpval \$0x12345678,%esi,%r9d
++[ 	]*[a-f0-9]+:	8f ea 28 12 cd 78 56 34 12[ 	]+lwpval \$0x12345678,%ebp,%r10d
++[ 	]*[a-f0-9]+:	8f ea 20 12 cc 78 56 34 12[ 	]+lwpval \$0x12345678,%esp,%r11d
++[ 	]*[a-f0-9]+:	8f ea 18 12 cb 78 56 34 12[ 	]+lwpval \$0x12345678,%ebx,%r12d
++[ 	]*[a-f0-9]+:	8f ea 10 12 ca 78 56 34 12[ 	]+lwpval \$0x12345678,%edx,%r13d
++[ 	]*[a-f0-9]+:	8f ea 08 12 c9 78 56 34 12[ 	]+lwpval \$0x12345678,%ecx,%r14d
++[ 	]*[a-f0-9]+:	8f ea 00 12 c8 78 56 34 12[ 	]+lwpval \$0x12345678,%eax,%r15d
+ [ 	]*[a-f0-9]+:	8f ca f8 12 cf 78 56 34 12[ 	]+lwpval \$0x12345678,%r15d,%rax
+ [ 	]*[a-f0-9]+:	8f ca f0 12 ce 78 56 34 12[ 	]+lwpval \$0x12345678,%r14d,%rcx
+ [ 	]*[a-f0-9]+:	8f ca e8 12 cd 78 56 34 12[ 	]+lwpval \$0x12345678,%r13d,%rdx
+@@ -198,38 +134,22 @@ Disassembly of section .text:
+ [ 	]*[a-f0-9]+:	8f ea 90 12 cd 78 56 34 12[ 	]+lwpval \$0x12345678,%ebp,%r13
+ [ 	]*[a-f0-9]+:	8f ea 88 12 ce 78 56 34 12[ 	]+lwpval \$0x12345678,%esi,%r14
+ [ 	]*[a-f0-9]+:	8f ea 80 12 cf 78 56 34 12[ 	]+lwpval \$0x12345678,%edi,%r15
+-[ 	]*[a-f0-9]+:	67 8f ea 78 12 00 34 12[ 	]+addr32 lwpins \$0x1234,\(%eax\),%ax
+-[ 	]*[a-f0-9]+:	67 8f ea 70 12 01 34 12[ 	]+addr32 lwpins \$0x1234,\(%ecx\),%cx
+-[ 	]*[a-f0-9]+:	67 8f ea 68 12 02 34 12[ 	]+addr32 lwpins \$0x1234,\(%edx\),%dx
+-[ 	]*[a-f0-9]+:	67 8f ea 60 12 03 34 12[ 	]+addr32 lwpins \$0x1234,\(%ebx\),%bx
+-[ 	]*[a-f0-9]+:	67 8f ea 58 12 04 24 34 12[ 	]+addr32 lwpins \$0x1234,\(%esp\),%sp
+-[ 	]*[a-f0-9]+:	67 8f ea 50 12 45 00 34 12[ 	]+addr32 lwpins \$0x1234,0x0\(%ebp\),%bp
+-[ 	]*[a-f0-9]+:	67 8f ea 48 12 06 34 12[ 	]+addr32 lwpins \$0x1234,\(%esi\),%si
+-[ 	]*[a-f0-9]+:	67 8f ea 40 12 07 34 12[ 	]+addr32 lwpins \$0x1234,\(%edi\),%di
+-[ 	]*[a-f0-9]+:	67 8f ca 38 12 00 34 12[ 	]+addr32 lwpins \$0x1234,\(%r8d\),%r8w
+-[ 	]*[a-f0-9]+:	67 8f ca 30 12 01 34 12[ 	]+addr32 lwpins \$0x1234,\(%r9d\),%r9w
+-[ 	]*[a-f0-9]+:	67 8f ca 28 12 02 34 12[ 	]+addr32 lwpins \$0x1234,\(%r10d\),%r10w
+-[ 	]*[a-f0-9]+:	67 8f ca 20 12 03 34 12[ 	]+addr32 lwpins \$0x1234,\(%r11d\),%r11w
+-[ 	]*[a-f0-9]+:	67 8f ca 18 12 04 24 34 12[ 	]+addr32 lwpins \$0x1234,\(%r12d\),%r12w
+-[ 	]*[a-f0-9]+:	67 8f ca 10 12 45 00 34 12[ 	]+addr32 lwpins \$0x1234,0x0\(%r13d\),%r13w
+-[ 	]*[a-f0-9]+:	67 8f ca 08 12 06 34 12[ 	]+addr32 lwpins \$0x1234,\(%r14d\),%r14w
+-[ 	]*[a-f0-9]+:	67 8f ca 00 12 07 34 12[ 	]+addr32 lwpins \$0x1234,\(%r15d\),%r15w
+-[ 	]*[a-f0-9]+:	67 8f ca 7c 12 07 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%r15d\),%eax
+-[ 	]*[a-f0-9]+:	67 8f ca 74 12 06 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%r14d\),%ecx
+-[ 	]*[a-f0-9]+:	67 8f ca 6c 12 45 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0x0\(%r13d\),%edx
+-[ 	]*[a-f0-9]+:	67 8f ca 64 12 04 24 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%r12d\),%ebx
+-[ 	]*[a-f0-9]+:	67 8f ca 5c 12 03 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%r11d\),%esp
+-[ 	]*[a-f0-9]+:	67 8f ca 54 12 02 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%r10d\),%ebp
+-[ 	]*[a-f0-9]+:	67 8f ca 4c 12 01 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%r9d\),%esi
+-[ 	]*[a-f0-9]+:	67 8f ca 44 12 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%r8d\),%edi
+-[ 	]*[a-f0-9]+:	67 8f ea 3c 12 07 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%edi\),%r8d
+-[ 	]*[a-f0-9]+:	67 8f ea 34 12 06 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%esi\),%r9d
+-[ 	]*[a-f0-9]+:	67 8f ea 2c 12 45 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0x0\(%ebp\),%r10d
+-[ 	]*[a-f0-9]+:	67 8f ea 24 12 04 24 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%esp\),%r11d
+-[ 	]*[a-f0-9]+:	67 8f ea 1c 12 03 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%ebx\),%r12d
+-[ 	]*[a-f0-9]+:	67 8f ea 14 12 02 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%edx\),%r13d
+-[ 	]*[a-f0-9]+:	67 8f ea 0c 12 01 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%ecx\),%r14d
+-[ 	]*[a-f0-9]+:	67 8f ea 04 12 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%eax\),%r15d
++[ 	]*[a-f0-9]+:	67 8f ca 78 12 07 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%r15d\),%eax
++[ 	]*[a-f0-9]+:	67 8f ca 70 12 06 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%r14d\),%ecx
++[ 	]*[a-f0-9]+:	67 8f ca 68 12 45 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0x0\(%r13d\),%edx
++[ 	]*[a-f0-9]+:	67 8f ca 60 12 04 24 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%r12d\),%ebx
++[ 	]*[a-f0-9]+:	67 8f ca 58 12 03 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%r11d\),%esp
++[ 	]*[a-f0-9]+:	67 8f ca 50 12 02 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%r10d\),%ebp
++[ 	]*[a-f0-9]+:	67 8f ca 48 12 01 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%r9d\),%esi
++[ 	]*[a-f0-9]+:	67 8f ca 40 12 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%r8d\),%edi
++[ 	]*[a-f0-9]+:	67 8f ea 38 12 07 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%edi\),%r8d
++[ 	]*[a-f0-9]+:	67 8f ea 30 12 06 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%esi\),%r9d
++[ 	]*[a-f0-9]+:	67 8f ea 28 12 45 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0x0\(%ebp\),%r10d
++[ 	]*[a-f0-9]+:	67 8f ea 20 12 04 24 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%esp\),%r11d
++[ 	]*[a-f0-9]+:	67 8f ea 18 12 03 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%ebx\),%r12d
++[ 	]*[a-f0-9]+:	67 8f ea 10 12 02 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%edx\),%r13d
++[ 	]*[a-f0-9]+:	67 8f ea 08 12 01 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%ecx\),%r14d
++[ 	]*[a-f0-9]+:	67 8f ea 00 12 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%eax\),%r15d
+ [ 	]*[a-f0-9]+:	67 8f ca f8 12 07 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%r15d\),%rax
+ [ 	]*[a-f0-9]+:	67 8f ca f0 12 06 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%r14d\),%rcx
+ [ 	]*[a-f0-9]+:	67 8f ca e8 12 45 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0x0\(%r13d\),%rdx
+@@ -246,38 +166,22 @@ Disassembly of section .text:
+ [ 	]*[a-f0-9]+:	67 8f ea 90 12 45 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0x0\(%ebp\),%r13
+ [ 	]*[a-f0-9]+:	67 8f ea 88 12 06 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%esi\),%r14
+ [ 	]*[a-f0-9]+:	67 8f ea 80 12 07 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,\(%edi\),%r15
+-[ 	]*[a-f0-9]+:	67 8f ea 78 12 08 34 12[ 	]+addr32 lwpval \$0x1234,\(%eax\),%ax
+-[ 	]*[a-f0-9]+:	67 8f ea 70 12 09 34 12[ 	]+addr32 lwpval \$0x1234,\(%ecx\),%cx
+-[ 	]*[a-f0-9]+:	67 8f ea 68 12 0a 34 12[ 	]+addr32 lwpval \$0x1234,\(%edx\),%dx
+-[ 	]*[a-f0-9]+:	67 8f ea 60 12 0b 34 12[ 	]+addr32 lwpval \$0x1234,\(%ebx\),%bx
+-[ 	]*[a-f0-9]+:	67 8f ea 58 12 0c 24 34 12[ 	]+addr32 lwpval \$0x1234,\(%esp\),%sp
+-[ 	]*[a-f0-9]+:	67 8f ea 50 12 4d 00 34 12[ 	]+addr32 lwpval \$0x1234,0x0\(%ebp\),%bp
+-[ 	]*[a-f0-9]+:	67 8f ea 48 12 0e 34 12[ 	]+addr32 lwpval \$0x1234,\(%esi\),%si
+-[ 	]*[a-f0-9]+:	67 8f ea 40 12 0f 34 12[ 	]+addr32 lwpval \$0x1234,\(%edi\),%di
+-[ 	]*[a-f0-9]+:	67 8f ca 38 12 08 34 12[ 	]+addr32 lwpval \$0x1234,\(%r8d\),%r8w
+-[ 	]*[a-f0-9]+:	67 8f ca 30 12 09 34 12[ 	]+addr32 lwpval \$0x1234,\(%r9d\),%r9w
+-[ 	]*[a-f0-9]+:	67 8f ca 28 12 0a 34 12[ 	]+addr32 lwpval \$0x1234,\(%r10d\),%r10w
+-[ 	]*[a-f0-9]+:	67 8f ca 20 12 0b 34 12[ 	]+addr32 lwpval \$0x1234,\(%r11d\),%r11w
+-[ 	]*[a-f0-9]+:	67 8f ca 18 12 0c 24 34 12[ 	]+addr32 lwpval \$0x1234,\(%r12d\),%r12w
+-[ 	]*[a-f0-9]+:	67 8f ca 10 12 4d 00 34 12[ 	]+addr32 lwpval \$0x1234,0x0\(%r13d\),%r13w
+-[ 	]*[a-f0-9]+:	67 8f ca 08 12 0e 34 12[ 	]+addr32 lwpval \$0x1234,\(%r14d\),%r14w
+-[ 	]*[a-f0-9]+:	67 8f ca 00 12 0f 34 12[ 	]+addr32 lwpval \$0x1234,\(%r15d\),%r15w
+-[ 	]*[a-f0-9]+:	67 8f ca 7c 12 0f 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%r15d\),%eax
+-[ 	]*[a-f0-9]+:	67 8f ca 74 12 0e 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%r14d\),%ecx
+-[ 	]*[a-f0-9]+:	67 8f ca 6c 12 4d 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0x0\(%r13d\),%edx
+-[ 	]*[a-f0-9]+:	67 8f ca 64 12 0c 24 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%r12d\),%ebx
+-[ 	]*[a-f0-9]+:	67 8f ca 5c 12 0b 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%r11d\),%esp
+-[ 	]*[a-f0-9]+:	67 8f ca 54 12 0a 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%r10d\),%ebp
+-[ 	]*[a-f0-9]+:	67 8f ca 4c 12 09 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%r9d\),%esi
+-[ 	]*[a-f0-9]+:	67 8f ca 44 12 08 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%r8d\),%edi
+-[ 	]*[a-f0-9]+:	67 8f ea 3c 12 0f 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%edi\),%r8d
+-[ 	]*[a-f0-9]+:	67 8f ea 34 12 0e 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%esi\),%r9d
+-[ 	]*[a-f0-9]+:	67 8f ea 2c 12 4d 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0x0\(%ebp\),%r10d
+-[ 	]*[a-f0-9]+:	67 8f ea 24 12 0c 24 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%esp\),%r11d
+-[ 	]*[a-f0-9]+:	67 8f ea 1c 12 0b 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%ebx\),%r12d
+-[ 	]*[a-f0-9]+:	67 8f ea 14 12 0a 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%edx\),%r13d
+-[ 	]*[a-f0-9]+:	67 8f ea 0c 12 09 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%ecx\),%r14d
+-[ 	]*[a-f0-9]+:	67 8f ea 04 12 08 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%eax\),%r15d
++[ 	]*[a-f0-9]+:	67 8f ca 78 12 0f 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%r15d\),%eax
++[ 	]*[a-f0-9]+:	67 8f ca 70 12 0e 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%r14d\),%ecx
++[ 	]*[a-f0-9]+:	67 8f ca 68 12 4d 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0x0\(%r13d\),%edx
++[ 	]*[a-f0-9]+:	67 8f ca 60 12 0c 24 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%r12d\),%ebx
++[ 	]*[a-f0-9]+:	67 8f ca 58 12 0b 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%r11d\),%esp
++[ 	]*[a-f0-9]+:	67 8f ca 50 12 0a 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%r10d\),%ebp
++[ 	]*[a-f0-9]+:	67 8f ca 48 12 09 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%r9d\),%esi
++[ 	]*[a-f0-9]+:	67 8f ca 40 12 08 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%r8d\),%edi
++[ 	]*[a-f0-9]+:	67 8f ea 38 12 0f 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%edi\),%r8d
++[ 	]*[a-f0-9]+:	67 8f ea 30 12 0e 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%esi\),%r9d
++[ 	]*[a-f0-9]+:	67 8f ea 28 12 4d 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0x0\(%ebp\),%r10d
++[ 	]*[a-f0-9]+:	67 8f ea 20 12 0c 24 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%esp\),%r11d
++[ 	]*[a-f0-9]+:	67 8f ea 18 12 0b 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%ebx\),%r12d
++[ 	]*[a-f0-9]+:	67 8f ea 10 12 0a 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%edx\),%r13d
++[ 	]*[a-f0-9]+:	67 8f ea 08 12 09 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%ecx\),%r14d
++[ 	]*[a-f0-9]+:	67 8f ea 00 12 08 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%eax\),%r15d
+ [ 	]*[a-f0-9]+:	67 8f ca f8 12 0f 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%r15d\),%rax
+ [ 	]*[a-f0-9]+:	67 8f ca f0 12 0e 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%r14d\),%rcx
+ [ 	]*[a-f0-9]+:	67 8f ca e8 12 4d 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0x0\(%r13d\),%rdx
+@@ -294,38 +198,22 @@ Disassembly of section .text:
+ [ 	]*[a-f0-9]+:	67 8f ea 90 12 4d 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0x0\(%ebp\),%r13
+ [ 	]*[a-f0-9]+:	67 8f ea 88 12 0e 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%esi\),%r14
+ [ 	]*[a-f0-9]+:	67 8f ea 80 12 0f 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,\(%edi\),%r15
+-[ 	]*[a-f0-9]+:	67 8f ea 78 12 80 fe ca 00 00 34 12[ 	]+addr32 lwpins \$0x1234,0xcafe\(%eax\),%ax
+-[ 	]*[a-f0-9]+:	67 8f ea 70 12 81 fe ca 00 00 34 12[ 	]+addr32 lwpins \$0x1234,0xcafe\(%ecx\),%cx
+-[ 	]*[a-f0-9]+:	67 8f ea 68 12 82 fe ca 00 00 34 12[ 	]+addr32 lwpins \$0x1234,0xcafe\(%edx\),%dx
+-[ 	]*[a-f0-9]+:	67 8f ea 60 12 83 fe ca 00 00 34 12[ 	]+addr32 lwpins \$0x1234,0xcafe\(%ebx\),%bx
+-[ 	]*[a-f0-9]+:	67 8f ea 58 12 84 24 fe ca 00 00 34 12[ 	]+addr32 lwpins \$0x1234,0xcafe\(%esp\),%sp
+-[ 	]*[a-f0-9]+:	67 8f ea 50 12 85 fe ca 00 00 34 12[ 	]+addr32 lwpins \$0x1234,0xcafe\(%ebp\),%bp
+-[ 	]*[a-f0-9]+:	67 8f ea 48 12 86 fe ca 00 00 34 12[ 	]+addr32 lwpins \$0x1234,0xcafe\(%esi\),%si
+-[ 	]*[a-f0-9]+:	67 8f ea 40 12 87 fe ca 00 00 34 12[ 	]+addr32 lwpins \$0x1234,0xcafe\(%edi\),%di
+-[ 	]*[a-f0-9]+:	67 8f ca 38 12 80 fe ca 00 00 34 12[ 	]+addr32 lwpins \$0x1234,0xcafe\(%r8d\),%r8w
+-[ 	]*[a-f0-9]+:	67 8f ca 30 12 81 fe ca 00 00 34 12[ 	]+addr32 lwpins \$0x1234,0xcafe\(%r9d\),%r9w
+-[ 	]*[a-f0-9]+:	67 8f ca 28 12 82 fe ca 00 00 34 12[ 	]+addr32 lwpins \$0x1234,0xcafe\(%r10d\),%r10w
+-[ 	]*[a-f0-9]+:	67 8f ca 20 12 83 fe ca 00 00 34 12[ 	]+addr32 lwpins \$0x1234,0xcafe\(%r11d\),%r11w
+-[ 	]*[a-f0-9]+:	67 8f ca 18 12 84 24 fe ca 00 00 34 12[ 	]+addr32 lwpins \$0x1234,0xcafe\(%r12d\),%r12w
+-[ 	]*[a-f0-9]+:	67 8f ca 10 12 85 fe ca 00 00 34 12[ 	]+addr32 lwpins \$0x1234,0xcafe\(%r13d\),%r13w
+-[ 	]*[a-f0-9]+:	67 8f ca 08 12 86 fe ca 00 00 34 12[ 	]+addr32 lwpins \$0x1234,0xcafe\(%r14d\),%r14w
+-[ 	]*[a-f0-9]+:	67 8f ca 00 12 87 fe ca 00 00 34 12[ 	]+addr32 lwpins \$0x1234,0xcafe\(%r15d\),%r15w
+-[ 	]*[a-f0-9]+:	67 8f ca 7c 12 87 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%r15d\),%eax
+-[ 	]*[a-f0-9]+:	67 8f ca 74 12 86 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%r14d\),%ecx
+-[ 	]*[a-f0-9]+:	67 8f ca 6c 12 85 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%r13d\),%edx
+-[ 	]*[a-f0-9]+:	67 8f ca 64 12 84 24 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%r12d\),%ebx
+-[ 	]*[a-f0-9]+:	67 8f ca 5c 12 83 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%r11d\),%esp
+-[ 	]*[a-f0-9]+:	67 8f ca 54 12 82 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%r10d\),%ebp
+-[ 	]*[a-f0-9]+:	67 8f ca 4c 12 81 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%r9d\),%esi
+-[ 	]*[a-f0-9]+:	67 8f ca 44 12 80 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%r8d\),%edi
+-[ 	]*[a-f0-9]+:	67 8f ea 3c 12 87 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%edi\),%r8d
+-[ 	]*[a-f0-9]+:	67 8f ea 34 12 86 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%esi\),%r9d
+-[ 	]*[a-f0-9]+:	67 8f ea 2c 12 85 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%ebp\),%r10d
+-[ 	]*[a-f0-9]+:	67 8f ea 24 12 84 24 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%esp\),%r11d
+-[ 	]*[a-f0-9]+:	67 8f ea 1c 12 83 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%ebx\),%r12d
+-[ 	]*[a-f0-9]+:	67 8f ea 14 12 82 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%edx\),%r13d
+-[ 	]*[a-f0-9]+:	67 8f ea 0c 12 81 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%ecx\),%r14d
+-[ 	]*[a-f0-9]+:	67 8f ea 04 12 80 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%eax\),%r15d
++[ 	]*[a-f0-9]+:	67 8f ca 78 12 87 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%r15d\),%eax
++[ 	]*[a-f0-9]+:	67 8f ca 70 12 86 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%r14d\),%ecx
++[ 	]*[a-f0-9]+:	67 8f ca 68 12 85 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%r13d\),%edx
++[ 	]*[a-f0-9]+:	67 8f ca 60 12 84 24 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%r12d\),%ebx
++[ 	]*[a-f0-9]+:	67 8f ca 58 12 83 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%r11d\),%esp
++[ 	]*[a-f0-9]+:	67 8f ca 50 12 82 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%r10d\),%ebp
++[ 	]*[a-f0-9]+:	67 8f ca 48 12 81 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%r9d\),%esi
++[ 	]*[a-f0-9]+:	67 8f ca 40 12 80 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%r8d\),%edi
++[ 	]*[a-f0-9]+:	67 8f ea 38 12 87 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%edi\),%r8d
++[ 	]*[a-f0-9]+:	67 8f ea 30 12 86 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%esi\),%r9d
++[ 	]*[a-f0-9]+:	67 8f ea 28 12 85 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%ebp\),%r10d
++[ 	]*[a-f0-9]+:	67 8f ea 20 12 84 24 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%esp\),%r11d
++[ 	]*[a-f0-9]+:	67 8f ea 18 12 83 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%ebx\),%r12d
++[ 	]*[a-f0-9]+:	67 8f ea 10 12 82 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%edx\),%r13d
++[ 	]*[a-f0-9]+:	67 8f ea 08 12 81 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%ecx\),%r14d
++[ 	]*[a-f0-9]+:	67 8f ea 00 12 80 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%eax\),%r15d
+ [ 	]*[a-f0-9]+:	67 8f ca f8 12 87 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%r15d\),%rax
+ [ 	]*[a-f0-9]+:	67 8f ca f0 12 86 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%r14d\),%rcx
+ [ 	]*[a-f0-9]+:	67 8f ca e8 12 85 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%r13d\),%rdx
+@@ -342,38 +230,22 @@ Disassembly of section .text:
+ [ 	]*[a-f0-9]+:	67 8f ea 90 12 85 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%ebp\),%r13
+ [ 	]*[a-f0-9]+:	67 8f ea 88 12 86 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%esi\),%r14
+ [ 	]*[a-f0-9]+:	67 8f ea 80 12 87 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpins \$0x12345678,0xcafe\(%edi\),%r15
+-[ 	]*[a-f0-9]+:	67 8f ea 78 12 88 fe ca 00 00 34 12[ 	]+addr32 lwpval \$0x1234,0xcafe\(%eax\),%ax
+-[ 	]*[a-f0-9]+:	67 8f ea 70 12 89 fe ca 00 00 34 12[ 	]+addr32 lwpval \$0x1234,0xcafe\(%ecx\),%cx
+-[ 	]*[a-f0-9]+:	67 8f ea 68 12 8a fe ca 00 00 34 12[ 	]+addr32 lwpval \$0x1234,0xcafe\(%edx\),%dx
+-[ 	]*[a-f0-9]+:	67 8f ea 60 12 8b fe ca 00 00 34 12[ 	]+addr32 lwpval \$0x1234,0xcafe\(%ebx\),%bx
+-[ 	]*[a-f0-9]+:	67 8f ea 58 12 8c 24 fe ca 00 00 34 12[ 	]+addr32 lwpval \$0x1234,0xcafe\(%esp\),%sp
+-[ 	]*[a-f0-9]+:	67 8f ea 50 12 8d fe ca 00 00 34 12[ 	]+addr32 lwpval \$0x1234,0xcafe\(%ebp\),%bp
+-[ 	]*[a-f0-9]+:	67 8f ea 48 12 8e fe ca 00 00 34 12[ 	]+addr32 lwpval \$0x1234,0xcafe\(%esi\),%si
+-[ 	]*[a-f0-9]+:	67 8f ea 40 12 8f fe ca 00 00 34 12[ 	]+addr32 lwpval \$0x1234,0xcafe\(%edi\),%di
+-[ 	]*[a-f0-9]+:	67 8f ca 38 12 88 fe ca 00 00 34 12[ 	]+addr32 lwpval \$0x1234,0xcafe\(%r8d\),%r8w
+-[ 	]*[a-f0-9]+:	67 8f ca 30 12 89 fe ca 00 00 34 12[ 	]+addr32 lwpval \$0x1234,0xcafe\(%r9d\),%r9w
+-[ 	]*[a-f0-9]+:	67 8f ca 28 12 8a fe ca 00 00 34 12[ 	]+addr32 lwpval \$0x1234,0xcafe\(%r10d\),%r10w
+-[ 	]*[a-f0-9]+:	67 8f ca 20 12 8b fe ca 00 00 34 12[ 	]+addr32 lwpval \$0x1234,0xcafe\(%r11d\),%r11w
+-[ 	]*[a-f0-9]+:	67 8f ca 18 12 8c 24 fe ca 00 00 34 12[ 	]+addr32 lwpval \$0x1234,0xcafe\(%r12d\),%r12w
+-[ 	]*[a-f0-9]+:	67 8f ca 10 12 8d fe ca 00 00 34 12[ 	]+addr32 lwpval \$0x1234,0xcafe\(%r13d\),%r13w
+-[ 	]*[a-f0-9]+:	67 8f ca 08 12 8e fe ca 00 00 34 12[ 	]+addr32 lwpval \$0x1234,0xcafe\(%r14d\),%r14w
+-[ 	]*[a-f0-9]+:	67 8f ca 00 12 8f fe ca 00 00 34 12[ 	]+addr32 lwpval \$0x1234,0xcafe\(%r15d\),%r15w
+-[ 	]*[a-f0-9]+:	67 8f ca 7c 12 8f fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%r15d\),%eax
+-[ 	]*[a-f0-9]+:	67 8f ca 74 12 8e fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%r14d\),%ecx
+-[ 	]*[a-f0-9]+:	67 8f ca 6c 12 8d fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%r13d\),%edx
+-[ 	]*[a-f0-9]+:	67 8f ca 64 12 8c 24 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%r12d\),%ebx
+-[ 	]*[a-f0-9]+:	67 8f ca 5c 12 8b fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%r11d\),%esp
+-[ 	]*[a-f0-9]+:	67 8f ca 54 12 8a fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%r10d\),%ebp
+-[ 	]*[a-f0-9]+:	67 8f ca 4c 12 89 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%r9d\),%esi
+-[ 	]*[a-f0-9]+:	67 8f ca 44 12 88 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%r8d\),%edi
+-[ 	]*[a-f0-9]+:	67 8f ea 3c 12 8f fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%edi\),%r8d
+-[ 	]*[a-f0-9]+:	67 8f ea 34 12 8e fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%esi\),%r9d
+-[ 	]*[a-f0-9]+:	67 8f ea 2c 12 8d fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%ebp\),%r10d
+-[ 	]*[a-f0-9]+:	67 8f ea 24 12 8c 24 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%esp\),%r11d
+-[ 	]*[a-f0-9]+:	67 8f ea 1c 12 8b fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%ebx\),%r12d
+-[ 	]*[a-f0-9]+:	67 8f ea 14 12 8a fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%edx\),%r13d
+-[ 	]*[a-f0-9]+:	67 8f ea 0c 12 89 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%ecx\),%r14d
+-[ 	]*[a-f0-9]+:	67 8f ea 04 12 88 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%eax\),%r15d
++[ 	]*[a-f0-9]+:	67 8f ca 78 12 8f fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%r15d\),%eax
++[ 	]*[a-f0-9]+:	67 8f ca 70 12 8e fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%r14d\),%ecx
++[ 	]*[a-f0-9]+:	67 8f ca 68 12 8d fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%r13d\),%edx
++[ 	]*[a-f0-9]+:	67 8f ca 60 12 8c 24 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%r12d\),%ebx
++[ 	]*[a-f0-9]+:	67 8f ca 58 12 8b fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%r11d\),%esp
++[ 	]*[a-f0-9]+:	67 8f ca 50 12 8a fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%r10d\),%ebp
++[ 	]*[a-f0-9]+:	67 8f ca 48 12 89 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%r9d\),%esi
++[ 	]*[a-f0-9]+:	67 8f ca 40 12 88 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%r8d\),%edi
++[ 	]*[a-f0-9]+:	67 8f ea 38 12 8f fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%edi\),%r8d
++[ 	]*[a-f0-9]+:	67 8f ea 30 12 8e fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%esi\),%r9d
++[ 	]*[a-f0-9]+:	67 8f ea 28 12 8d fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%ebp\),%r10d
++[ 	]*[a-f0-9]+:	67 8f ea 20 12 8c 24 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%esp\),%r11d
++[ 	]*[a-f0-9]+:	67 8f ea 18 12 8b fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%ebx\),%r12d
++[ 	]*[a-f0-9]+:	67 8f ea 10 12 8a fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%edx\),%r13d
++[ 	]*[a-f0-9]+:	67 8f ea 08 12 89 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%ecx\),%r14d
++[ 	]*[a-f0-9]+:	67 8f ea 00 12 88 fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%eax\),%r15d
+ [ 	]*[a-f0-9]+:	67 8f ca f8 12 8f fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%r15d\),%rax
+ [ 	]*[a-f0-9]+:	67 8f ca f0 12 8e fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%r14d\),%rcx
+ [ 	]*[a-f0-9]+:	67 8f ca e8 12 8d fe ca 00 00 78 56 34 12[ 	]+addr32 lwpval \$0x12345678,0xcafe\(%r13d\),%rdx
+Index: binutils-2.20.51.0.2/gas/testsuite/gas/i386/x86-64-lwp.s
+===================================================================
+--- binutils-2.20.51.0.2.orig/gas/testsuite/gas/i386/x86-64-lwp.s
++++ binutils-2.20.51.0.2/gas/testsuite/gas/i386/x86-64-lwp.s
+@@ -4,22 +4,6 @@
+ 	.text
+ _start:
+ 
+-	llwpcb %ax
+-	llwpcb %cx
+-	llwpcb %dx
+-	llwpcb %bx
+-	llwpcb %sp
+-	llwpcb %bp
+-	llwpcb %si
+-	llwpcb %di
+-	llwpcb %r8w
+-	llwpcb %r9w
+-	llwpcb %r10w
+-	llwpcb %r11w
+-	llwpcb %r12w
+-	llwpcb %r13w
+-	llwpcb %r14w
+-	llwpcb %r15w
+ 	llwpcb %eax
+ 	llwpcb %ecx
+ 	llwpcb %edx
+@@ -85,39 +69,7 @@ _start:
+ 	slwpcb %edx
+ 	slwpcb %ecx
+ 	slwpcb %eax
+-	slwpcb %r15w
+-	slwpcb %r14w
+-	slwpcb %r13w
+-	slwpcb %r12w
+-	slwpcb %r11w
+-	slwpcb %r10w
+-	slwpcb %r9w
+-	slwpcb %r8w
+-	slwpcb %di
+-	slwpcb %si
+-	slwpcb %bp
+-	slwpcb %sp
+-	slwpcb %bx
+-	slwpcb %dx
+-	slwpcb %cx
+-	slwpcb %ax
+ 
+-	lwpins $0x1234, %eax, %ax
+-	lwpins $0x1234, %ecx, %cx
+-	lwpins $0x1234, %edx, %dx
+-	lwpins $0x1234, %ebx, %bx
+-	lwpins $0x1234, %esp, %sp
+-	lwpins $0x1234, %ebp, %bp
+-	lwpins $0x1234, %esi, %si
+-	lwpins $0x1234, %edi, %di
+-	lwpins $0x1234, %r8d, %r8w
+-	lwpins $0x1234, %r9d, %r9w
+-	lwpins $0x1234, %r10d, %r10w
+-	lwpins $0x1234, %r11d, %r11w
+-	lwpins $0x1234, %r12d, %r12w
+-	lwpins $0x1234, %r13d, %r13w
+-	lwpins $0x1234, %r14d, %r14w
+-	lwpins $0x1234, %r15d, %r15w
+ 	lwpins $0x12345678, %r15d, %eax
+ 	lwpins $0x12345678, %r14d, %ecx
+ 	lwpins $0x12345678, %r13d, %edx
+@@ -151,22 +103,6 @@ _start:
+ 	lwpins $0x12345678, %esi, %r14
+ 	lwpins $0x12345678, %edi, %r15
+ 
+-	lwpval $0x1234, %eax, %ax
+-	lwpval $0x1234, %ecx, %cx
+-	lwpval $0x1234, %edx, %dx
+-	lwpval $0x1234, %ebx, %bx
+-	lwpval $0x1234, %esp, %sp
+-	lwpval $0x1234, %ebp, %bp
+-	lwpval $0x1234, %esi, %si
+-	lwpval $0x1234, %edi, %di
+-	lwpval $0x1234, %r8d, %r8w
+-	lwpval $0x1234, %r9d, %r9w
+-	lwpval $0x1234, %r10d, %r10w
+-	lwpval $0x1234, %r11d, %r11w
+-	lwpval $0x1234, %r12d, %r12w
+-	lwpval $0x1234, %r13d, %r13w
+-	lwpval $0x1234, %r14d, %r14w
+-	lwpval $0x1234, %r15d, %r15w
+ 	lwpval $0x12345678, %r15d, %eax
+ 	lwpval $0x12345678, %r14d, %ecx
+ 	lwpval $0x12345678, %r13d, %edx
+@@ -200,22 +136,6 @@ _start:
+ 	lwpval $0x12345678, %esi, %r14
+ 	lwpval $0x12345678, %edi, %r15
+ 
+-	lwpins $0x1234, (%eax), %ax
+-	lwpins $0x1234, (%ecx), %cx
+-	lwpins $0x1234, (%edx), %dx
+-	lwpins $0x1234, (%ebx), %bx
+-	lwpins $0x1234, (%esp), %sp
+-	lwpins $0x1234, (%ebp), %bp
+-	lwpins $0x1234, (%esi), %si
+-	lwpins $0x1234, (%edi), %di
+-	lwpins $0x1234, (%r8d), %r8w
+-	lwpins $0x1234, (%r9d), %r9w
+-	lwpins $0x1234, (%r10d), %r10w
+-	lwpins $0x1234, (%r11d), %r11w
+-	lwpins $0x1234, (%r12d), %r12w
+-	lwpins $0x1234, (%r13d), %r13w
+-	lwpins $0x1234, (%r14d), %r14w
+-	lwpins $0x1234, (%r15d), %r15w
+ 	lwpins $0x12345678, (%r15d), %eax
+ 	lwpins $0x12345678, (%r14d), %ecx
+ 	lwpins $0x12345678, (%r13d), %edx
+@@ -249,22 +169,6 @@ _start:
+ 	lwpins $0x12345678, (%esi), %r14
+ 	lwpins $0x12345678, (%edi), %r15
+ 
+-	lwpval $0x1234, (%eax), %ax
+-	lwpval $0x1234, (%ecx), %cx
+-	lwpval $0x1234, (%edx), %dx
+-	lwpval $0x1234, (%ebx), %bx
+-	lwpval $0x1234, (%esp), %sp
+-	lwpval $0x1234, (%ebp), %bp
+-	lwpval $0x1234, (%esi), %si
+-	lwpval $0x1234, (%edi), %di
+-	lwpval $0x1234, (%r8d), %r8w
+-	lwpval $0x1234, (%r9d), %r9w
+-	lwpval $0x1234, (%r10d), %r10w
+-	lwpval $0x1234, (%r11d), %r11w
+-	lwpval $0x1234, (%r12d), %r12w
+-	lwpval $0x1234, (%r13d), %r13w
+-	lwpval $0x1234, (%r14d), %r14w
+-	lwpval $0x1234, (%r15d), %r15w
+ 	lwpval $0x12345678, (%r15d), %eax
+ 	lwpval $0x12345678, (%r14d), %ecx
+ 	lwpval $0x12345678, (%r13d), %edx
+@@ -298,22 +202,6 @@ _start:
+ 	lwpval $0x12345678, (%esi), %r14
+ 	lwpval $0x12345678, (%edi), %r15
+ 
+-	lwpins $0x1234, 0xcafe(%eax), %ax
+-	lwpins $0x1234, 0xcafe(%ecx), %cx
+-	lwpins $0x1234, 0xcafe(%edx), %dx
+-	lwpins $0x1234, 0xcafe(%ebx), %bx
+-	lwpins $0x1234, 0xcafe(%esp), %sp
+-	lwpins $0x1234, 0xcafe(%ebp), %bp
+-	lwpins $0x1234, 0xcafe(%esi), %si
+-	lwpins $0x1234, 0xcafe(%edi), %di
+-	lwpins $0x1234, 0xcafe(%r8d), %r8w
+-	lwpins $0x1234, 0xcafe(%r9d), %r9w
+-	lwpins $0x1234, 0xcafe(%r10d), %r10w
+-	lwpins $0x1234, 0xcafe(%r11d), %r11w
+-	lwpins $0x1234, 0xcafe(%r12d), %r12w
+-	lwpins $0x1234, 0xcafe(%r13d), %r13w
+-	lwpins $0x1234, 0xcafe(%r14d), %r14w
+-	lwpins $0x1234, 0xcafe(%r15d), %r15w
+ 	lwpins $0x12345678, 0xcafe(%r15d), %eax
+ 	lwpins $0x12345678, 0xcafe(%r14d), %ecx
+ 	lwpins $0x12345678, 0xcafe(%r13d), %edx
+@@ -347,22 +235,6 @@ _start:
+ 	lwpins $0x12345678, 0xcafe(%esi), %r14
+ 	lwpins $0x12345678, 0xcafe(%edi), %r15
+ 
+-	lwpval $0x1234, 0xcafe(%eax), %ax
+-	lwpval $0x1234, 0xcafe(%ecx), %cx
+-	lwpval $0x1234, 0xcafe(%edx), %dx
+-	lwpval $0x1234, 0xcafe(%ebx), %bx
+-	lwpval $0x1234, 0xcafe(%esp), %sp
+-	lwpval $0x1234, 0xcafe(%ebp), %bp
+-	lwpval $0x1234, 0xcafe(%esi), %si
+-	lwpval $0x1234, 0xcafe(%edi), %di
+-	lwpval $0x1234, 0xcafe(%r8d), %r8w
+-	lwpval $0x1234, 0xcafe(%r9d), %r9w
+-	lwpval $0x1234, 0xcafe(%r10d), %r10w
+-	lwpval $0x1234, 0xcafe(%r11d), %r11w
+-	lwpval $0x1234, 0xcafe(%r12d), %r12w
+-	lwpval $0x1234, 0xcafe(%r13d), %r13w
+-	lwpval $0x1234, 0xcafe(%r14d), %r14w
+-	lwpval $0x1234, 0xcafe(%r15d), %r15w
+ 	lwpval $0x12345678, 0xcafe(%r15d), %eax
+ 	lwpval $0x12345678, 0xcafe(%r14d), %ecx
+ 	lwpval $0x12345678, 0xcafe(%r13d), %edx
+Index: binutils-2.20.51.0.2/opcodes/i386-dis.c
+===================================================================
+--- binutils-2.20.51.0.2.orig/opcodes/i386-dis.c
++++ binutils-2.20.51.0.2/opcodes/i386-dis.c
+@@ -117,7 +117,6 @@ static void XMM_Fixup (int, int);
+ static void CRC32_Fixup (int, int);
+ static void OP_LWPCB_E (int, int);
+ static void OP_LWP_E (int, int);
+-static void OP_LWP_I (int, int);
+ static void OP_Vex_2src_1 (int, int);
+ static void OP_Vex_2src_2 (int, int);
+ 
+@@ -2441,8 +2440,8 @@ static const struct dis386 reg_table[][8
+   },
+   /* REG_XOP_LWP */
+   {
+-    { "lwpins", { { OP_LWP_E, 0 }, Ed, { OP_LWP_I, 0 } } },
+-    { "lwpval",	{ { OP_LWP_E, 0 }, Ed, { OP_LWP_I, 0 } } },
++    { "lwpins", { { OP_LWP_E, 0 }, Ed, Iq } },
++    { "lwpval",	{ { OP_LWP_E, 0 }, Ed, Iq } },
+     { "(bad)",	{ XX } },
+     { "(bad)",	{ XX } },
+     { "(bad)",	{ XX } },
+@@ -13996,10 +13995,8 @@ OP_LWPCB_E (int bytemode ATTRIBUTE_UNUSE
+ 
+   if (vex.w)
+     names = names64;
+-  else if (vex.length == 256)
+-    names = names32;
+   else
+-    names = names16;
++    names = names32;
+ 
+   reg = modrm.rm;
+   USED_REX (REX_B);
+@@ -14016,20 +14013,9 @@ OP_LWP_E (int bytemode ATTRIBUTE_UNUSED,
+ 
+   if (vex.w)
+     names = names64;
+-  else if (vex.length == 256)
+-    names = names32;
+   else
+-    names = names16;
++    names = names32;
+ 
+   oappend (names[vex.register_specifier]);
+ }
+ 
+-static void
+-OP_LWP_I (int bytemode ATTRIBUTE_UNUSED, int sizeflag)
+-{
+-  if (vex.w || vex.length == 256)
+-    OP_I (q_mode, sizeflag);
+-  else
+-    OP_I (w_mode, sizeflag);
+-}
+-
+Index: binutils-2.20.51.0.2/opcodes/i386-opc.tbl
+===================================================================
+--- binutils-2.20.51.0.2.orig/opcodes/i386-opc.tbl
++++ binutils-2.20.51.0.2/opcodes/i386-opc.tbl
+@@ -2702,17 +2702,13 @@ vpshlw,     3, 0x95, None, 1, CpuXOP, Mo
+ 
+ // LWP instructions
+ 
+-llwpcb, 1, 0x12, 0x0, 1, CpuLWP, Modrm|XOP09|VexW0|IgnoreSize|No_bSuf|No_wSuf|No_lSuf|No_sSuf|No_qSuf|No_ldSuf|Vex, { Reg16 }
+-llwpcb, 1, 0x12, 0x0, 1, CpuLWP, Modrm|XOP09|VexW0|IgnoreSize|No_bSuf|No_wSuf|No_lSuf|No_sSuf|No_qSuf|No_ldSuf|Vex=2, { Reg32 }
++llwpcb, 1, 0x12, 0x0, 1, CpuLWP, Modrm|XOP09|VexW0|IgnoreSize|No_bSuf|No_wSuf|No_lSuf|No_sSuf|No_qSuf|No_ldSuf|Vex, { Reg32 }
+ llwpcb, 1, 0x12, 0x0, 1, CpuLWP, Modrm|XOP09|VexW1|IgnoreSize|No_bSuf|No_wSuf|No_lSuf|No_sSuf|No_qSuf|No_ldSuf|NoRex64|Vex, { Reg64 }
+-slwpcb, 1, 0x12, 0x1, 1, CpuLWP, Modrm|XOP09|VexW0|IgnoreSize|No_bSuf|No_wSuf|No_lSuf|No_sSuf|No_qSuf|No_ldSuf|Vex, { Reg16 }
+-slwpcb, 1, 0x12, 0x1, 1, CpuLWP, Modrm|XOP09|VexW0|IgnoreSize|No_bSuf|No_wSuf|No_lSuf|No_sSuf|No_qSuf|No_ldSuf|Vex=2, { Reg32 }
++slwpcb, 1, 0x12, 0x1, 1, CpuLWP, Modrm|XOP09|VexW0|IgnoreSize|No_bSuf|No_wSuf|No_lSuf|No_sSuf|No_qSuf|No_ldSuf|Vex, { Reg32 }
+ slwpcb, 1, 0x12, 0x1, 1, CpuLWP, Modrm|XOP09|VexW1|IgnoreSize|No_bSuf|No_wSuf|No_lSuf|No_sSuf|No_qSuf|No_ldSuf|NoRex64|Vex, { Reg64 }
+-lwpval, 3, 0x12, 0x1, 1, CpuLWP, Modrm|XOP0A|VexW0|IgnoreSize|No_bSuf|No_wSuf|No_lSuf|No_sSuf|No_qSuf|No_ldSuf|VexLWP|Vex, { Imm16, Dword|Reg32|Disp8|Disp16|Disp32|Disp32S|Unspecified|BaseIndex, Reg16 }
+-lwpval, 3, 0x12, 0x1, 1, CpuLWP, Modrm|XOP0A|VexW0|IgnoreSize|No_bSuf|No_wSuf|No_lSuf|No_sSuf|No_qSuf|No_ldSuf|VexLWP|Vex=2, { Imm32|Imm32S, Dword|Reg32|Disp8|Disp16|Disp32|Disp32S|Unspecified|BaseIndex, Reg32 }
++lwpval, 3, 0x12, 0x1, 1, CpuLWP, Modrm|XOP0A|VexW0|IgnoreSize|No_bSuf|No_wSuf|No_lSuf|No_sSuf|No_qSuf|No_ldSuf|VexLWP|Vex, { Imm32|Imm32S, Dword|Reg32|Disp8|Disp16|Disp32|Disp32S|Unspecified|BaseIndex, Reg32 }
+ lwpval, 3, 0x12, 0x1, 1, CpuLWP, Modrm|XOP0A|VexW1|IgnoreSize|No_bSuf|No_wSuf|No_lSuf|No_sSuf|No_qSuf|No_ldSuf|VexLWP|NoRex64|Vex, { Imm32|Imm32S, Dword|Reg32|Disp8|Disp16|Disp32|Disp32S|Unspecified|BaseIndex, Reg64 }
+-lwpins, 3, 0x12, 0x0, 1, CpuLWP, Modrm|XOP0A|VexW0|IgnoreSize|No_bSuf|No_wSuf|No_lSuf|No_sSuf|No_qSuf|No_ldSuf|VexLWP|Vex, { Imm16, Dword|Reg32|Disp8|Disp16|Disp32|Disp32S|Unspecified|BaseIndex, Reg16 }
+-lwpins, 3, 0x12, 0x0, 1, CpuLWP, Modrm|XOP0A|VexW0|IgnoreSize|No_bSuf|No_wSuf|No_lSuf|No_sSuf|No_qSuf|No_ldSuf|VexLWP|Vex=2, { Imm32|Imm32S, Dword|Reg32|Disp8|Disp16|Disp32|Disp32S|Unspecified|BaseIndex, Reg32 }
++lwpins, 3, 0x12, 0x0, 1, CpuLWP, Modrm|XOP0A|VexW0|IgnoreSize|No_bSuf|No_wSuf|No_lSuf|No_sSuf|No_qSuf|No_ldSuf|VexLWP|Vex, { Imm32|Imm32S, Dword|Reg32|Disp8|Disp16|Disp32|Disp32S|Unspecified|BaseIndex, Reg32 }
+ lwpins, 3, 0x12, 0x0, 1, CpuLWP, Modrm|XOP0A|VexW1|IgnoreSize|No_bSuf|No_wSuf|No_lSuf|No_sSuf|No_qSuf|No_ldSuf|VexLWP|NoRex64|Vex, { Imm32|Imm32S, Dword|Reg32|Disp8|Disp16|Disp32|Disp32S|Unspecified|BaseIndex, Reg64 }
+ 
+ // AMD 3DNow! instructions.
+Index: binutils-2.20.51.0.2/opcodes/i386-tbl.h
+===================================================================
+--- binutils-2.20.51.0.2.orig/opcodes/i386-tbl.h
++++ binutils-2.20.51.0.2/opcodes/i386-tbl.h
+@@ -32405,16 +32405,6 @@ const insn_template i386_optab[] =
+     { 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 
+       1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 
+       0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+-    { { { 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+-	  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+-	  0, 0, 0, 0, 0, 0 } } } },
+-  { "llwpcb", 1, 0x12, 0x0, 1,
+-    { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 
+-        0, 0, 0, 0 } },
+-    { 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 
+-      1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 
+-      0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+     { { { 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+ 	  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+ 	  0, 0, 0, 0, 0, 0 } } } },
+@@ -32435,16 +32425,6 @@ const insn_template i386_optab[] =
+     { 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 
+       1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 
+       0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+-    { { { 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+-	  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+-	  0, 0, 0, 0, 0, 0 } } } },
+-  { "slwpcb", 1, 0x12, 0x1, 1,
+-    { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 
+-        0, 0, 0, 0 } },
+-    { 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 
+-      1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 
+-      0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+     { { { 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+ 	  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+ 	  0, 0, 0, 0, 0, 0 } } } },
+@@ -32465,22 +32445,6 @@ const insn_template i386_optab[] =
+     { 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 
+       1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 
+       1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+-    { { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 
+-	  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+-	  0, 0, 0, 0, 0, 0 } },
+-      { { 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+-	  1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 
+-	  0, 0, 1, 0, 0, 0 } },
+-      { { 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+-	  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+-	  0, 0, 0, 0, 0, 0 } } } },
+-  { "lwpval", 3, 0x12, 0x1, 1,
+-    { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 
+-        0, 0, 0, 0 } },
+-    { 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 
+-      1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 
+-      1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+     { { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 
+ 	  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+ 	  0, 0, 0, 0, 0, 0 } },
+@@ -32513,22 +32477,6 @@ const insn_template i386_optab[] =
+     { 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 
+       1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 
+       1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+-    { { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 
+-	  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+-	  0, 0, 0, 0, 0, 0 } },
+-      { { 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+-	  1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 
+-	  0, 0, 1, 0, 0, 0 } },
+-      { { 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+-	  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+-	  0, 0, 0, 0, 0, 0 } } } },
+-  { "lwpins", 3, 0x12, 0x0, 1,
+-    { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 
+-        0, 0, 0, 0 } },
+-    { 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 
+-      1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 
+-      1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+     { { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 
+ 	  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+ 	  0, 0, 0, 0, 0, 0 } },

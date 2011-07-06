@@ -1,0 +1,168 @@
+opcodes/
+2009-11-17  Quentin Neill  <quentin.neill@amd.com>
+	    Sebastian Pop  <sebastian.pop@amd.com>
+
+	* i386-dis.c (get_vex_imm8): Increase bytes_before_imm when
+	decoding the second source operand from the immediate byte.
+	(OP_EX_VexW): Pass an extra integer to identify the second
+	and third source arguments.
+
+gas/testsuite/
+2009-11-17  Quentin Neill  <quentin.neill@amd.com>
+	    Sebastian Pop  <sebastian.pop@amd.com>
+
+	* gas/i386/x86-64-fma4.d: Add new patterns.
+	* gas/i386/x86-64-fma4.s: Same.
+	* gas/i386/x86-64-xop.d: Adjusted.
+
+--- gas/testsuite/gas/i386/x86-64-fma4.d	29 Oct 2009 22:22:59 -0000	1.3
++++ gas/testsuite/gas/i386/x86-64-fma4.d	25 Nov 2009 15:15:30 -0000	1.4
+@@ -63,4 +63,7 @@ Disassembly of section .text:
+ [ 	]*[a-f0-9]+:	c4 e3 69 7a 39 40    	vfnmaddss %xmm4,\(%rcx\),%xmm2,%xmm7
+ [ 	]*[a-f0-9]+:	c4 e3 e9 7e fc 60    	vfnmsubss %xmm4,%xmm6,%xmm2,%xmm7
+ [ 	]*[a-f0-9]+:	c4 e3 e9 7e 39 60    	vfnmsubss \(%rcx\),%xmm6,%xmm2,%xmm7
++[ 	]*[a-f0-9]+:	c4 c3 e1 69 64 0d 00 b0[ 	]+vfmaddpd 0x0\(%r13,%rcx,1\),%xmm11,%xmm3,%xmm4
++[ 	]*[a-f0-9]+:	c4 c3 f1 69 bc c1 be 00 00 00 90[ 	]+vfmaddpd 0xbe\(%r9,%rax,8\),%xmm9,%xmm1,%xmm7
++[ 	]*[a-f0-9]+:	c4 c3 e1 6d 64 0d 00 b0[ 	]+vfmsubpd 0x0\(%r13,%rcx,1\),%xmm11,%xmm3,%xmm4
+ #pass
+--- gas/testsuite/gas/i386/x86-64-fma4.s	6 Jul 2009 19:34:30 -0000	1.1
++++ gas/testsuite/gas/i386/x86-64-fma4.s	25 Nov 2009 15:15:30 -0000	1.2
+@@ -61,4 +61,7 @@ _start:
+ 	vfnmaddss %xmm4,(%rcx),%xmm2,%xmm7
+ 	vfnmsubss %xmm4,%xmm6,%xmm2,%xmm7
+ 	vfnmsubss (%rcx),%xmm6,%xmm2,%xmm7
++	vfmaddpd (%r13,%rcx),%xmm11,%xmm3,%xmm4
++	vfmaddpd 0xbe(%r9,%rax,8),%xmm9,%xmm1,%xmm7
++	vfmsubpd (%r13,%rcx),%xmm11,%xmm3,%xmm4
+ 
+--- gas/testsuite/gas/i386/x86-64-xop.d	19 Nov 2009 07:08:39 -0000	1.2
++++ gas/testsuite/gas/i386/x86-64-xop.d	25 Nov 2009 15:15:30 -0000	1.3
+@@ -142,14 +142,14 @@ Disassembly of section .text:
+ [ 	]*[a-f0-9]+:	8f 68 78 a2 f8 20[ 	]+vpcmov %xmm2,%xmm0,%xmm0,%xmm15
+ [ 	]*[a-f0-9]+:	8f 48 f8 a2 3a c0[ 	]+vpcmov \(%r10\),%xmm12,%xmm0,%xmm15
+ [ 	]*[a-f0-9]+:	8f 68 f8 a2 38 00[ 	]+vpcmov \(%rax\),%xmm0,%xmm0,%xmm15
+-[ 	]*[a-f0-9]+:	8f 48 80 a2 3c 24 f0[ 	]+vpcmov \(%r12\),%xmm2,%xmm15,%xmm15
+-[ 	]*[a-f0-9]+:	8f 48 80 a2 3c 24 00[ 	]+vpcmov \(%r12\),%xmm2,%xmm15,%xmm15
++[ 	]*[a-f0-9]+:	8f 48 80 a2 3c 24 f0[ 	]+vpcmov \(%r12\),%xmm15,%xmm15,%xmm15
++[ 	]*[a-f0-9]+:	8f 48 80 a2 3c 24 00[ 	]+vpcmov \(%r12\),%xmm0,%xmm15,%xmm15
+ [ 	]*[a-f0-9]+:	8f e8 80 a2 00 c0[ 	]+vpcmov \(%rax\),%xmm12,%xmm15,%xmm0
+ [ 	]*[a-f0-9]+:	8f c8 00 a2 c7 f0[ 	]+vpcmov %xmm15,%xmm15,%xmm15,%xmm0
+ [ 	]*[a-f0-9]+:	8f 48 c0 a2 1a f0[ 	]+vpcmov \(%r10\),%xmm15,%xmm7,%xmm11
+ [ 	]*[a-f0-9]+:	8f 48 40 a2 dc 20[ 	]+vpcmov %xmm2,%xmm12,%xmm7,%xmm11
+ [ 	]*[a-f0-9]+:	8f c8 78 a2 c4 20[ 	]+vpcmov %xmm2,%xmm12,%xmm0,%xmm0
+-[ 	]*[a-f0-9]+:	8f 48 80 a2 1c 24 f0[ 	]+vpcmov \(%r12\),%xmm2,%xmm15,%xmm11
++[ 	]*[a-f0-9]+:	8f 48 80 a2 1c 24 f0[ 	]+vpcmov \(%r12\),%xmm15,%xmm15,%xmm11
+ [ 	]*[a-f0-9]+:	8f c8 44 a2 c4 00[ 	]+vpcmov %ymm0,%ymm12,%ymm7,%ymm0
+ [ 	]*[a-f0-9]+:	8f e8 fc a2 00 f0[ 	]+vpcmov \(%rax\),%ymm15,%ymm0,%ymm0
+ [ 	]*[a-f0-9]+:	8f c8 84 a2 02 f0[ 	]+vpcmov \(%r10\),%ymm15,%ymm15,%ymm0
+@@ -158,14 +158,14 @@ Disassembly of section .text:
+ [ 	]*[a-f0-9]+:	8f 68 7c a2 f8 20[ 	]+vpcmov %ymm2,%ymm0,%ymm0,%ymm15
+ [ 	]*[a-f0-9]+:	8f 48 fc a2 3a c0[ 	]+vpcmov \(%r10\),%ymm12,%ymm0,%ymm15
+ [ 	]*[a-f0-9]+:	8f 68 fc a2 38 00[ 	]+vpcmov \(%rax\),%ymm0,%ymm0,%ymm15
+-[ 	]*[a-f0-9]+:	8f 48 84 a2 3c 24 f0[ 	]+vpcmov \(%r12\),%ymm2,%ymm15,%ymm15
+-[ 	]*[a-f0-9]+:	8f 48 84 a2 3c 24 00[ 	]+vpcmov \(%r12\),%ymm2,%ymm15,%ymm15
++[ 	]*[a-f0-9]+:	8f 48 84 a2 3c 24 f0[ 	]+vpcmov \(%r12\),%ymm15,%ymm15,%ymm15
++[ 	]*[a-f0-9]+:	8f 48 84 a2 3c 24 00[ 	]+vpcmov \(%r12\),%ymm0,%ymm15,%ymm15
+ [ 	]*[a-f0-9]+:	8f e8 84 a2 00 c0[ 	]+vpcmov \(%rax\),%ymm12,%ymm15,%ymm0
+ [ 	]*[a-f0-9]+:	8f c8 04 a2 c7 f0[ 	]+vpcmov %ymm15,%ymm15,%ymm15,%ymm0
+ [ 	]*[a-f0-9]+:	8f 48 c4 a2 1a f0[ 	]+vpcmov \(%r10\),%ymm15,%ymm7,%ymm11
+ [ 	]*[a-f0-9]+:	8f 48 44 a2 dc 20[ 	]+vpcmov %ymm2,%ymm12,%ymm7,%ymm11
+ [ 	]*[a-f0-9]+:	8f c8 7c a2 c4 20[ 	]+vpcmov %ymm2,%ymm12,%ymm0,%ymm0
+-[ 	]*[a-f0-9]+:	8f 48 84 a2 1c 24 f0[ 	]+vpcmov \(%r12\),%ymm2,%ymm15,%ymm11
++[ 	]*[a-f0-9]+:	8f 48 84 a2 1c 24 f0[ 	]+vpcmov \(%r12\),%ymm15,%ymm15,%ymm11
+ [ 	]*[a-f0-9]+:	8f 68 78 cc 3f 03[ 	]+vpcomb \$0x3,\(%rdi\),%xmm0,%xmm15
+ [ 	]*[a-f0-9]+:	8f e8 78 cc c8 ff[ 	]+vpcomb \$0xff,%xmm0,%xmm0,%xmm1
+ [ 	]*[a-f0-9]+:	8f c8 78 cc cf ff[ 	]+vpcomb \$0xff,%xmm15,%xmm0,%xmm1
+@@ -734,14 +734,14 @@ Disassembly of section .text:
+ [ 	]*[a-f0-9]+:	8f 68 78 a3 f8 20[ 	]+vpperm %xmm2,%xmm0,%xmm0,%xmm15
+ [ 	]*[a-f0-9]+:	8f 48 f8 a3 3a c0[ 	]+vpperm \(%r10\),%xmm12,%xmm0,%xmm15
+ [ 	]*[a-f0-9]+:	8f 68 f8 a3 38 00[ 	]+vpperm \(%rax\),%xmm0,%xmm0,%xmm15
+-[ 	]*[a-f0-9]+:	8f 48 80 a3 3c 24 f0[ 	]+vpperm \(%r12\),%xmm2,%xmm15,%xmm15
+-[ 	]*[a-f0-9]+:	8f 48 80 a3 3c 24 00[ 	]+vpperm \(%r12\),%xmm2,%xmm15,%xmm15
++[ 	]*[a-f0-9]+:	8f 48 80 a3 3c 24 f0[ 	]+vpperm \(%r12\),%xmm15,%xmm15,%xmm15
++[ 	]*[a-f0-9]+:	8f 48 80 a3 3c 24 00[ 	]+vpperm \(%r12\),%xmm0,%xmm15,%xmm15
+ [ 	]*[a-f0-9]+:	8f e8 80 a3 00 c0[ 	]+vpperm \(%rax\),%xmm12,%xmm15,%xmm0
+ [ 	]*[a-f0-9]+:	8f c8 00 a3 c7 f0[ 	]+vpperm %xmm15,%xmm15,%xmm15,%xmm0
+ [ 	]*[a-f0-9]+:	8f 48 c0 a3 1a f0[ 	]+vpperm \(%r10\),%xmm15,%xmm7,%xmm11
+ [ 	]*[a-f0-9]+:	8f 48 40 a3 dc 20[ 	]+vpperm %xmm2,%xmm12,%xmm7,%xmm11
+ [ 	]*[a-f0-9]+:	8f c8 78 a3 c4 20[ 	]+vpperm %xmm2,%xmm12,%xmm0,%xmm0
+-[ 	]*[a-f0-9]+:	8f 48 80 a3 1c 24 f0[ 	]+vpperm \(%r12\),%xmm2,%xmm15,%xmm11
++[ 	]*[a-f0-9]+:	8f 48 80 a3 1c 24 f0[ 	]+vpperm \(%r12\),%xmm15,%xmm15,%xmm11
+ [ 	]*[a-f0-9]+:	8f c8 40 a3 c7 00[ 	]+vpperm %xmm0,%xmm15,%xmm7,%xmm0
+ [ 	]*[a-f0-9]+:	8f c8 78 a3 01 20[ 	]+vpperm %xmm2,\(%r9\),%xmm0,%xmm0
+ [ 	]*[a-f0-9]+:	8f c8 00 a3 01 f0[ 	]+vpperm %xmm15,\(%r9\),%xmm15,%xmm0
+--- opcodes/i386-dis.c	19 Nov 2009 07:08:39 -0000	1.215
++++ opcodes/i386-dis.c	25 Nov 2009 15:15:30 -0000	1.216
+@@ -13691,7 +13691,7 @@ OP_VEX (int bytemode, int sizeflag ATTRI
+ /* Get the VEX immediate byte without moving codep.  */
+ 
+ static unsigned char
+-get_vex_imm8 (int sizeflag)
++get_vex_imm8 (int sizeflag, int opnum)
+ {
+   int bytes_before_imm = 0;
+ 
+@@ -13708,10 +13708,13 @@ get_vex_imm8 (int sizeflag)
+ 	    {
+ 	      FETCH_DATA (the_info, codep + 1);
+ 	      base = *codep & 7;
+-	      /* Don't increase bytes_before_imm as this has already
+-		 been done in OP_E_memory.  */
++	      /* When decoding the third source, don't increase
++		 bytes_before_imm as this has already been incremented
++		 by one in OP_E_memory while decoding the second
++		 source operand.  */
++              if (opnum == 0)
++                bytes_before_imm++;
+ 	    }
+-
+ 	  switch (modrm.mod)
+ 	    {
+ 	    case 0:
+@@ -13725,8 +13728,13 @@ get_vex_imm8 (int sizeflag)
+ 	      bytes_before_imm += 4;
+ 	      break;
+ 	    case 1:
+-	      /* 1 byte displacement: codep has already been
+-		 incremented by 1 in OP_E_memory.  */
++	      /* 1 byte displacement: when decoding the third source,
++		 don't increase bytes_before_imm as this has already
++		 been incremented by one in OP_E_memory while decoding
++		 the second source operand.  */
++              if (opnum == 0)
++                bytes_before_imm++;
++
+ 	      break;
+ 	    }
+ 	}
+@@ -13744,8 +13752,13 @@ get_vex_imm8 (int sizeflag)
+ 	      bytes_before_imm += 2;
+ 	      break;
+ 	    case 1:
+-	      /* 1 byte displacement: codep has already been
+-		 incremented by 1 in OP_E_memory.  */
++	      /* 1 byte displacement: when decoding the third source,
++		 don't increase bytes_before_imm as this has already
++		 been incremented by one in OP_E_memory while decoding
++		 the second source operand.  */
++              if (opnum == 0)
++                bytes_before_imm++;
++
+ 	      break;
+ 	    }
+ 	}
+@@ -13856,12 +13869,12 @@ OP_EX_VexW (int bytemode, int sizeflag)
+       codep++;
+ 
+       if (vex.w)
+-	reg = get_vex_imm8 (sizeflag) >> 4;
++	reg = get_vex_imm8 (sizeflag, 0) >> 4;
+     }
+   else
+     {
+       if (!vex.w)
+-	reg = get_vex_imm8 (sizeflag) >> 4;
++	reg = get_vex_imm8 (sizeflag, 1) >> 4;
+     }
+ 
+   OP_EX_VexReg (bytemode, sizeflag, reg);

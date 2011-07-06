@@ -1,0 +1,38 @@
+--- ../binutils-2.20.51.0.2.orig/bfd/elfcode.h	2009-10-12 11:45:05.000000000 +0100
++++ bfd/elfcode.h	2009-10-12 11:47:14.000000000 +0100
+@@ -1175,6 +1175,24 @@ elf_checksum_contents (bfd *abfd,
+ 
+       if (i_shdr.contents)
+ 	(*process) (i_shdr.contents, i_shdr.sh_size, arg);
++      else
++	{
++	  asection *sec;
++
++	  sec = bfd_section_from_elf_index (abfd, count);
++	  if (sec != NULL)
++	    {
++	      if (sec->contents == NULL)
++		{
++		  /* Force rereading from file.  */
++		  sec->flags &= ~SEC_IN_MEMORY;
++		  if (! bfd_malloc_and_get_section (abfd, sec, & sec->contents))
++		    continue;
++		}
++	      if (sec->contents != NULL)
++		(*process) (sec->contents, i_shdr.sh_size, arg);
++	    }
++	}
+     }
+ 
+   return TRUE;
+--- ../binutils-2.20.51.0.2.orig/bfd/section.c	2009-10-12 11:45:05.000000000 +0100
++++ bfd/section.c	2009-10-12 11:48:44.000000000 +0100
+@@ -1553,7 +1553,7 @@ bfd_malloc_and_get_section (bfd *abfd, s
+     return TRUE;
+ 
+   p = (bfd_byte *)
+-      bfd_malloc (sec->rawsize > sec->size ? sec->rawsize : sec->size);
++      bfd_zmalloc (sec->rawsize > sec->size ? sec->rawsize : sec->size);
+   if (p == NULL)
+     return FALSE;
+   *buf = p;
