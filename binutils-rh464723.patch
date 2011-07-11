@@ -1,0 +1,38 @@
+2010-05-06  H.J. Lu  <hongjiu.lu@intel.com>
+
+	* dwarf.c (init_dwarf_regnames): Handle EM_L1OM.
+	* readelf.c (get_elf_section_flags): Likewise.
+	(process_section_headers): Likewise.
+
+Index: binutils-2.20.51.0.2/binutils/dwarf.c
+===================================================================
+--- binutils-2.20.51.0.2.orig/binutils/dwarf.c
++++ binutils-2.20.51.0.2/binutils/dwarf.c
+@@ -3998,6 +3998,7 @@ init_dwarf_regnames (unsigned int e_mach
+       break;
+ 
+     case EM_X86_64:
++    case EM_L1OM:
+       dwarf_regnames = dwarf_regnames_x86_64;
+       dwarf_regnames_count = ARRAY_SIZE (dwarf_regnames_x86_64);
+       break;
+Index: binutils-2.20.51.0.2/binutils/readelf.c
+===================================================================
+--- binutils-2.20.51.0.2.orig/binutils/readelf.c
++++ binutils-2.20.51.0.2/binutils/readelf.c
+@@ -4013,6 +4013,7 @@ get_elf_section_flags (bfd_vma sh_flags)
+ 		case EM_386:
+ 		case EM_486:
+ 		case EM_X86_64:
++		case EM_L1OM:
+ 		case EM_OLD_SPARCV9:
+ 		case EM_SPARC32PLUS:
+ 		case EM_SPARCV9:
+@@ -4471,6 +4472,7 @@ process_section_headers (FILE * file)
+ 		case EM_386:
+ 		case EM_486:
+ 		case EM_X86_64:
++		case EM_L1OM:
+ 		case EM_OLD_SPARCV9:
+ 		case EM_SPARC32PLUS:
+ 		case EM_SPARCV9:

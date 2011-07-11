@@ -17,7 +17,7 @@
 Summary: A GNU collection of binary utilities
 Name: %{?cross}binutils%{?_with_debug:-debug}
 Version: 2.20.51.0.2
-Release: 5.11%{?dist}
+Release: 5.20%{?dist}
 License: GPLv3+
 Group: Development/Tools
 URL: http://sources.redhat.com/binutils
@@ -50,6 +50,15 @@ Patch24: binutils-2.20.51.0.2-ld-r.patch
 Patch25: binutils-rh578576.patch
 Patch26: binutils-rh587788.patch
 Patch27: binutils-rh588825.patch
+Patch28: binutils-rh578661.patch
+Patch29: binutils-rh633448.patch
+Patch30: binutils-rh464723.patch
+Patch31: binutils-rh631540.patch
+Patch32: binutils-rh614443.patch
+Patch33: binutils-rh663587.patch
+Patch34: binutils-rh679435.patch
+Patch35: binutils-rh680143.patch
+Patch36: binutils-rh697703.patch
 
 %if 0%{?_with_debug:1}
 # Define this if you want to skip the strip step and preserve debug info.
@@ -141,6 +150,15 @@ to consider using libelf instead of BFD.
 %patch25 -p1
 %patch26 -p1
 %patch27 -p1
+%patch28 -p1
+%patch29 -p1
+%patch30 -p1
+%patch31 -p1
+%patch32 -p1
+%patch33 -p1
+%patch34 -p1
+%patch35 -p1
+%patch36 -p1
 
 # We cannot run autotools as there is an exact requirement of autoconf-2.59.
 
@@ -148,7 +166,7 @@ to consider using libelf instead of BFD.
 sed -i -e '/#define.*ELF_COMMONPAGESIZE/s/0x1000$/0x10000/' bfd/elf*ppc.c
 # LTP sucks
 perl -pi -e 's/i\[3-7\]86/i[34567]86/g' */conf*
-sed -i -e 's/%''{release}/%{release}/g' bfd/Makefile{.am,.in}
+sed -i -e 's/%%{release}/%{release}/g' bfd/Makefile{.am,.in}
 sed -i -e '/^libopcodes_la_\(DEPENDENCIES\|LIBADD\)/s,$, ../bfd/libbfd.la,' opcodes/Makefile.{am,in}
 # Build libbfd.so and libopcodes.so with -Bsymbolic-functions if possible.
 if gcc %{optflags} -v --help 2>&1 | grep -q -- -Bsymbolic-functions; then
@@ -410,6 +428,33 @@ exit 0
 %endif # %{isnative}
 
 %changelog
+* Wed Apr 20 2011 Jan Kratochvil <jan.kratochvil@redhat.com> - 2.20.51.0.2-5.20
+- Fix RELOC_AGAINST_DISCARDED_SECTION crash by off-by-one overrun (#697703).
+
+* Fri Feb 25 2011 Andreas Schwab <schwab@redhat.com> - 2.20.51.0.2-5.19
+- Check audit entry only on ELF input (#680143)
+
+* Fri Feb 25 2011 Andreas Schwab <schwab@redhat.com> - 2.20.51.0.2-5.18
+- Don't match zero size sections at start or end of PT_DYNAMIC (#679435)
+
+* Fri Dec 17 2010 Andreas Schwab <schwab@redhat.com> - 2.20.51.0.2-5.17
+- Large-TOC support for powerpc (#663587)
+
+* Wed Dec  8 2010 Andreas Schwab <schwab@redhat.com> - 2.20.51.0.2-5.16
+- Set proper offset in empty section (#614443)
+
+* Mon Nov 29 2010 Andreas Schwab <schwab@redhat.com> - 2.20.51.0.2-5.15
+- Add support for System z196 processor (#631540)
+
+* Thu Nov 25 2010 Andreas Schwab <schwab@redhat.com> - 2.20.51.0.2-5.14
+- Support EM_L1OM in objdump and readelf (#464723)
+
+* Wed Nov 24 2010 Andreas Schwab <schwab@redhat.com> - 2.20.51.0.2-5.13
+- Add support for notes in s390 core files (#633448)
+
+* Tue Nov 23 2010 Andreas Schwab <schwab@redhat.com> - 2.20.51.0.2-5.12
+- Add support for more than 65535 program headers (#578661)
+
 * Wed May  5 2010 Andreas Schwab <schwab@redhat.com> - 2.20.51.0.2-5.11
 - Add STB_GNU_UNIQUE symbols to archive index (#588825)
 
@@ -1406,7 +1451,7 @@ exit 0
 
 * Thu Oct 11 2001 Jakub Jelinek <jakub@redhat.com> 2.11.92.0.5-2
 - fix strings patch
-- use getc_unlocked in strings to speed it up by 50% on large files
+- use getc_unlocked in strings to speed it up by 50%% on large files
 
 * Wed Oct 10 2001 Jakub Jelinek <jakub@redhat.com> 2.11.92.0.5-1
 - update to 2.11.92.0.5

@@ -1,0 +1,251 @@
+2010-02-09  Michael Holzheu  <holzheu@de.ibm.com>
+
+bfd/:
+	* elf-bfd.h (elfcore_write_s390_timer, elfcore_write_s390_todcmp,
+	elfcore_write_s390_todpreg, elfcore_write_s390_ctrs,
+	elfcore_write_s390_prefix): New.
+	* elf.c (elfcore_write_s390_timer, elfcore_write_s390_todcmp,
+	elfcore_write_s390_todpreg, elfcore_write_s390_ctrs,
+	elfcore_write_s390_prefix): New.
+	(elfcore_grok_note): Handle NT_S390_TIMER, NT_S390_TODCMP,
+	NT_S390_TODPREG, NT_S390_CTRS and NT_S390_PREFIX.
+	(elfcore_write_register_note): Handle .reg-s390-timer,
+	.reg-s390-todcmp, .reg-s390-todpreg, .reg-s390-ctrs,
+	.reg-s390-prefix section.
+binutils/:
+	* readelf.c (get_note_type): Handle NT_S390_TIMER, NT_S390_TODCMP,
+	NT_S390_TODPREG, NT_S390_CTRS and NT_S390_PREFIX.
+include/elf/:
+	* common.h (NT_S390_TIMER, NT_S390_TODCMP, NT_S390_TODPREG,
+	NT_S390_CTRS and NT_S390_PREFIX): Define.
+
+Index: binutils-2.20.51.0.2/bfd/elf-bfd.h
+===================================================================
+--- binutils-2.20.51.0.2.orig/bfd/elf-bfd.h
++++ binutils-2.20.51.0.2/bfd/elf-bfd.h
+@@ -2173,6 +2173,16 @@ extern char *elfcore_write_ppc_vmx
+   (bfd *, char *, int *, const void *, int);
+ extern char *elfcore_write_ppc_vsx
+   (bfd *, char *, int *, const void *, int);
++extern char *elfcore_write_s390_timer
++  (bfd *, char *, int *, const void *, int);
++extern char *elfcore_write_s390_todcmp
++  (bfd *, char *, int *, const void *, int);
++extern char *elfcore_write_s390_todpreg
++  (bfd *, char *, int *, const void *, int);
++extern char *elfcore_write_s390_ctrs
++  (bfd *, char *, int *, const void *, int);
++extern char *elfcore_write_s390_prefix
++  (bfd *, char *, int *, const void *, int);
+ extern char *elfcore_write_lwpstatus
+   (bfd *, char *, int *, long, int, const void *);
+ extern char *elfcore_write_register_note
+Index: binutils-2.20.51.0.2/bfd/elf.c
+===================================================================
+--- binutils-2.20.51.0.2.orig/bfd/elf.c
++++ binutils-2.20.51.0.2/bfd/elf.c
+@@ -7729,6 +7729,36 @@ elfcore_grok_ppc_vsx (bfd *abfd, Elf_Int
+   return elfcore_make_note_pseudosection (abfd, ".reg-ppc-vsx", note);
+ }
+ 
++static bfd_boolean
++elfcore_grok_s390_timer (bfd *abfd, Elf_Internal_Note *note)
++{
++  return elfcore_make_note_pseudosection (abfd, ".reg-s390-timer", note);
++}
++
++static bfd_boolean
++elfcore_grok_s390_todcmp (bfd *abfd, Elf_Internal_Note *note)
++{
++  return elfcore_make_note_pseudosection (abfd, ".reg-s390-todcmp", note);
++}
++
++static bfd_boolean
++elfcore_grok_s390_todpreg (bfd *abfd, Elf_Internal_Note *note)
++{
++  return elfcore_make_note_pseudosection (abfd, ".reg-s390-todpreg", note);
++}
++
++static bfd_boolean
++elfcore_grok_s390_ctrs (bfd *abfd, Elf_Internal_Note *note)
++{
++  return elfcore_make_note_pseudosection (abfd, ".reg-s390-ctrs", note);
++}
++
++static bfd_boolean
++elfcore_grok_s390_prefix (bfd *abfd, Elf_Internal_Note *note)
++{
++  return elfcore_make_note_pseudosection (abfd, ".reg-s390-prefix", note);
++}
++
+ #if defined (HAVE_PRPSINFO_T)
+ typedef prpsinfo_t   elfcore_psinfo_t;
+ #if defined (HAVE_PRPSINFO32_T)		/* Sparc64 cross Sparc32 */
+@@ -8090,6 +8120,41 @@ elfcore_grok_note (bfd *abfd, Elf_Intern
+       else
+         return TRUE;
+ 
++    case NT_S390_TIMER:
++      if (note->namesz == 6
++          && strcmp (note->namedata, "LINUX") == 0)
++        return elfcore_grok_s390_timer (abfd, note);
++      else
++        return TRUE;
++
++    case NT_S390_TODCMP:
++      if (note->namesz == 6
++          && strcmp (note->namedata, "LINUX") == 0)
++        return elfcore_grok_s390_todcmp (abfd, note);
++      else
++        return TRUE;
++
++    case NT_S390_TODPREG:
++      if (note->namesz == 6
++          && strcmp (note->namedata, "LINUX") == 0)
++        return elfcore_grok_s390_todpreg (abfd, note);
++      else
++        return TRUE;
++
++    case NT_S390_CTRS:
++      if (note->namesz == 6
++          && strcmp (note->namedata, "LINUX") == 0)
++        return elfcore_grok_s390_ctrs (abfd, note);
++      else
++        return TRUE;
++
++    case NT_S390_PREFIX:
++      if (note->namesz == 6
++          && strcmp (note->namedata, "LINUX") == 0)
++        return elfcore_grok_s390_prefix (abfd, note);
++      else
++        return TRUE;
++
+     case NT_PRPSINFO:
+     case NT_PSINFO:
+       if (bed->elf_backend_grok_psinfo)
+@@ -8733,6 +8798,66 @@ elfcore_write_ppc_vsx (bfd *abfd,
+ }
+ 
+ char *
++elfcore_write_s390_timer (bfd *abfd,
++                          char *buf,
++                          int *bufsiz,
++                          const void *s390_timer,
++                          int size)
++{
++  char *note_name = "LINUX";
++  return elfcore_write_note (abfd, buf, bufsiz,
++                             note_name, NT_S390_TIMER, s390_timer, size);
++}
++
++char *
++elfcore_write_s390_todcmp (bfd *abfd,
++                           char *buf,
++                           int *bufsiz,
++                           const void *s390_todcmp,
++                           int size)
++{
++  char *note_name = "LINUX";
++  return elfcore_write_note (abfd, buf, bufsiz,
++                             note_name, NT_S390_TODCMP, s390_todcmp, size);
++}
++
++char *
++elfcore_write_s390_todpreg (bfd *abfd,
++                            char *buf,
++                            int *bufsiz,
++                            const void *s390_todpreg,
++                            int size)
++{
++  char *note_name = "LINUX";
++  return elfcore_write_note (abfd, buf, bufsiz,
++                             note_name, NT_S390_TODPREG, s390_todpreg, size);
++}
++
++char *
++elfcore_write_s390_ctrs (bfd *abfd,
++                         char *buf,
++                         int *bufsiz,
++                         const void *s390_ctrs,
++                         int size)
++{
++  char *note_name = "LINUX";
++  return elfcore_write_note (abfd, buf, bufsiz,
++                             note_name, NT_S390_CTRS, s390_ctrs, size);
++}
++
++char *
++elfcore_write_s390_prefix (bfd *abfd,
++                           char *buf,
++                           int *bufsiz,
++                           const void *s390_prefix,
++                           int size)
++{
++  char *note_name = "LINUX";
++  return elfcore_write_note (abfd, buf, bufsiz,
++                             note_name, NT_S390_PREFIX, s390_prefix, size);
++}
++
++char *
+ elfcore_write_register_note (bfd *abfd,
+ 			     char *buf,
+ 			     int *bufsiz,
+@@ -8748,6 +8873,16 @@ elfcore_write_register_note (bfd *abfd,
+     return elfcore_write_ppc_vmx (abfd, buf, bufsiz, data, size);
+   if (strcmp (section, ".reg-ppc-vsx") == 0)
+     return elfcore_write_ppc_vsx (abfd, buf, bufsiz, data, size);
++  if (strcmp (section, ".reg-s390-timer") == 0)
++    return elfcore_write_s390_timer (abfd, buf, bufsiz, data, size);
++  if (strcmp (section, ".reg-s390-todcmp") == 0)
++    return elfcore_write_s390_todcmp (abfd, buf, bufsiz, data, size);
++  if (strcmp (section, ".reg-s390-todpreg") == 0)
++    return elfcore_write_s390_todpreg (abfd, buf, bufsiz, data, size);
++  if (strcmp (section, ".reg-s390-ctrs") == 0)
++    return elfcore_write_s390_ctrs (abfd, buf, bufsiz, data, size);
++  if (strcmp (section, ".reg-s390-prefix") == 0)
++    return elfcore_write_s390_prefix (abfd, buf, bufsiz, data, size);
+   return NULL;
+ }
+ 
+Index: binutils-2.20.51.0.2/binutils/readelf.c
+===================================================================
+--- binutils-2.20.51.0.2.orig/binutils/readelf.c
++++ binutils-2.20.51.0.2/binutils/readelf.c
+@@ -10461,6 +10461,16 @@ get_note_type (unsigned e_type)
+ 	return _("NT_PPC_VMX (ppc Altivec registers)");
+       case NT_PPC_VSX:
+ 	return _("NT_PPC_VSX (ppc VSX registers)");
++      case NT_S390_TIMER:
++	return _("NT_S390_TIMER (s390 timer register)");
++      case NT_S390_TODCMP:
++	return _("NT_S390_TODCMP (s390 TOD comparator register)");
++      case NT_S390_TODPREG:
++	return _("NT_S390_TODPREG (s390 TOD programmable register)");
++      case NT_S390_CTRS:
++	return _("NT_S390_CTRS (s390 control registers)");
++      case NT_S390_PREFIX:
++	return _("NT_S390_PREFIX (s390 prefix register)");
+       case NT_PSTATUS:
+ 	return _("NT_PSTATUS (pstatus structure)");
+       case NT_FPREGS:
+Index: binutils-2.20.51.0.2/include/elf/common.h
+===================================================================
+--- binutils-2.20.51.0.2.orig/include/elf/common.h
++++ binutils-2.20.51.0.2/include/elf/common.h
+@@ -514,6 +514,16 @@
+ 					/*   note name must be "LINUX".  */
+ #define NT_PPC_VSX	0x102		/* PowerPC VSX registers */
+ 					/*   note name must be "LINUX".  */
++#define NT_S390_TIMER	0x301		/* S390 timer */
++					/*   note name must be "LINUX".  */
++#define NT_S390_TODCMP	0x302		/* S390 TOD clock comparator */
++					/*   note name must be "LINUX".  */
++#define NT_S390_TODPREG	0x303		/* S390 TOD programmable register */
++					/*   note name must be "LINUX".  */
++#define NT_S390_CTRS	0x304		/* S390 control registers */
++					/*   note name must be "LINUX".  */
++#define NT_S390_PREFIX	0x305		/* S390 prefix register */
++					/*   note name must be "LINUX".  */
+ 
+ /* Note segments for core files on dir-style procfs systems.  */
+ 

@@ -1,0 +1,226 @@
+2010-01-19  Ian Lance Taylor  <iant@google.com>
+
+elfcpp/:
+	* elfcpp.h (PN_XNUM): Define.
+gold/:
+	* output.cc (Output_section_headers::do_sized_write): Write large
+	segment count to sh_info field.
+	(Output_file_header::do_sized_write): For large segment count,
+	write PN_XNUM to e_phnum field.
+
+2010-01-19  Daisuke Hatayama  <d.hatayama@jp.fujitsu.com>
+	    Alan Modra <amodra@gmail.com>
+
+        * readelf.c (process_file_header): Handle e_phnum extension.
+
+2010-01-19  Daisuke Hatayama  <d.hatayama@jp.fujitsu.com>
+	    Alan Modra <amodra@gmail.com>
+
+        * elfcode.h (elf_swap_ehdr_out): Handle e_phnum > 0xffff.
+	(elf_object_p): Read e_phnum extension.
+	(elf_write_shdrs_and_ehdr): Write e_phnum extension.
+        * elfcore.h (elf_core_file_p): Read e_phnum extension.  Sanity check
+	that we can read last program header.
+
+2010-01-19  Daisuke Hatayama  <d.hatayama@jp.fujitsu.com>
+
+        * common.h (PN_XNUM): Define.
+
+Index: binutils-2.20.51.0.2/bfd/elfcode.h
+===================================================================
+--- binutils-2.20.51.0.2.orig/bfd/elfcode.h
++++ binutils-2.20.51.0.2/bfd/elfcode.h
+@@ -283,7 +283,10 @@ elf_swap_ehdr_out (bfd *abfd,
+   H_PUT_32 (abfd, src->e_flags, dst->e_flags);
+   H_PUT_16 (abfd, src->e_ehsize, dst->e_ehsize);
+   H_PUT_16 (abfd, src->e_phentsize, dst->e_phentsize);
+-  H_PUT_16 (abfd, src->e_phnum, dst->e_phnum);
++  tmp = src->e_phnum;
++  if (tmp > PN_XNUM)
++    tmp = PN_XNUM;
++  H_PUT_16 (abfd, tmp, dst->e_phnum);
+   H_PUT_16 (abfd, src->e_shentsize, dst->e_shentsize);
+   tmp = src->e_shnum;
+   if (tmp >= (SHN_LORESERVE & 0xffff))
+@@ -711,6 +714,14 @@ elf_object_p (bfd *abfd)
+ 	    goto got_wrong_format_error;
+ 	}
+ 
++      /* And program headers.  */
++      if (i_ehdrp->e_phnum == PN_XNUM && i_shdr.sh_info != 0)
++	{
++	  i_ehdrp->e_phnum = i_shdr.sh_info;
++	  if (i_ehdrp->e_phnum != i_shdr.sh_info)
++	    goto got_wrong_format_error;
++	}
++
+       /* Sanity check that we can read all of the section headers.
+ 	 It ought to be good enough to just read the last one.  */
+       if (i_ehdrp->e_shnum != 1)
+@@ -1105,6 +1116,8 @@ elf_write_shdrs_and_ehdr (bfd *abfd)
+ 
+   /* Some fields in the first section header handle overflow of ehdr
+      fields.  */
++  if (i_ehdrp->e_phnum >= PN_XNUM)
++    i_shdrp[0]->sh_info = i_ehdrp->e_phnum;
+   if (i_ehdrp->e_shnum >= (SHN_LORESERVE & 0xffff))
+     i_shdrp[0]->sh_size = i_ehdrp->e_shnum;
+   if (i_ehdrp->e_shstrndx >= (SHN_LORESERVE & 0xffff))
+Index: binutils-2.20.51.0.2/bfd/elfcore.h
+===================================================================
+--- binutils-2.20.51.0.2.orig/bfd/elfcore.h
++++ binutils-2.20.51.0.2/bfd/elfcore.h
+@@ -184,6 +184,61 @@ elf_core_file_p (bfd *abfd)
+   if (i_ehdrp->e_phentsize != sizeof (Elf_External_Phdr))
+     goto wrong;
+ 
++  /* If the program header count is PN_XNUM(0xffff), the actual
++     count is in the first section header.  */
++  if (i_ehdrp->e_shoff != 0 && i_ehdrp->e_phnum == PN_XNUM)
++    {
++      Elf_External_Shdr x_shdr;
++      Elf_Internal_Shdr i_shdr;
++      bfd_signed_vma where = i_ehdrp->e_shoff;
++
++      if (where != (file_ptr) where)
++	goto wrong;
++
++      /* Seek to the section header table in the file.  */
++      if (bfd_seek (abfd, (file_ptr) where, SEEK_SET) != 0)
++	goto fail;
++
++      /* Read the first section header at index 0, and convert to internal
++	 form.  */
++      if (bfd_bread (&x_shdr, sizeof (x_shdr), abfd) != sizeof (x_shdr))
++	goto fail;
++      elf_swap_shdr_in (abfd, &x_shdr, &i_shdr);
++
++      if (i_shdr.sh_info != 0)
++	{
++	  i_ehdrp->e_phnum = i_shdr.sh_info;
++	  if (i_ehdrp->e_phnum != i_shdr.sh_info)
++	    goto wrong;
++	}
++    }
++
++  /* Sanity check that we can read all of the program headers.
++     It ought to be good enough to just read the last one.  */
++  if (i_ehdrp->e_phnum > 1)
++    {
++      Elf_External_Phdr x_phdr;
++      Elf_Internal_Phdr i_phdr;
++      bfd_signed_vma where;
++
++      /* Check that we don't have a totally silly number of
++	 program headers.  */
++      if (i_ehdrp->e_phnum > (unsigned int) -1 / sizeof (x_phdr)
++	  || i_ehdrp->e_phnum > (unsigned int) -1 / sizeof (i_phdr))
++	goto wrong;
++
++      where = i_ehdrp->e_phoff + (i_ehdrp->e_phnum - 1) * sizeof (x_phdr);
++      if (where != (file_ptr) where)
++	goto wrong;
++      if ((bfd_size_type) where <= i_ehdrp->e_phoff)
++	goto wrong;
++
++      if (bfd_seek (abfd, (file_ptr) where, SEEK_SET) != 0)
++	goto fail;
++      if (bfd_bread (&x_phdr, sizeof (x_phdr), abfd) != sizeof (x_phdr))
++	goto fail;
++    }
++
+   /* Move to the start of the program headers.  */
+   if (bfd_seek (abfd, (file_ptr) i_ehdrp->e_phoff, SEEK_SET) != 0)
+     goto wrong;
+Index: binutils-2.20.51.0.2/binutils/readelf.c
+===================================================================
+--- binutils-2.20.51.0.2.orig/binutils/readelf.c
++++ binutils-2.20.51.0.2/binutils/readelf.c
+@@ -3269,8 +3269,13 @@ process_file_header (void)
+ 	      (long) elf_header.e_ehsize);
+       printf (_("  Size of program headers:           %ld (bytes)\n"),
+ 	      (long) elf_header.e_phentsize);
+-      printf (_("  Number of program headers:         %ld\n"),
++      printf (_("  Number of program headers:         %ld"),
+ 	      (long) elf_header.e_phnum);
++      if (section_headers != NULL
++	  && elf_header.e_phnum == PN_XNUM
++	  && section_headers[0].sh_info != 0)
++	printf (_(" (%ld)"), (long) section_headers[0].sh_info);
++      putc ('\n', stdout);
+       printf (_("  Size of section headers:           %ld (bytes)\n"),
+ 	      (long) elf_header.e_shentsize);
+       printf (_("  Number of section headers:         %ld"),
+@@ -3291,6 +3296,9 @@ process_file_header (void)
+ 
+   if (section_headers != NULL)
+     {
++      if (elf_header.e_phnum == PN_XNUM
++	  && section_headers[0].sh_info != 0)
++	elf_header.e_phnum = section_headers[0].sh_info;
+       if (elf_header.e_shnum == SHN_UNDEF)
+ 	elf_header.e_shnum = section_headers[0].sh_size;
+       if (elf_header.e_shstrndx == (SHN_XINDEX & 0xffff))
+Index: binutils-2.20.51.0.2/elfcpp/elfcpp.h
+===================================================================
+--- binutils-2.20.51.0.2.orig/elfcpp/elfcpp.h
++++ binutils-2.20.51.0.2/elfcpp/elfcpp.h
+@@ -302,6 +302,15 @@ enum EM
+   // Old MN10200 objects used 0xdead (EM_MN10200 is correct).
+ };
+ 
++// A special value found in the Ehdr e_phnum field.
++
++enum
++{
++  // Number of program segments stored in sh_info field of first
++  // section headre.
++  PN_XNUM = 0xffff
++};
++
+ // Special section indices.
+ 
+ enum
+Index: binutils-2.20.51.0.2/gold/output.cc
+===================================================================
+--- binutils-2.20.51.0.2.orig/gold/output.cc
++++ binutils-2.20.51.0.2/gold/output.cc
+@@ -213,7 +213,9 @@ Output_section_headers::do_sized_write(O
+     else
+       oshdr.put_sh_link(shstrndx);
+ 
+-    oshdr.put_sh_info(0);
++    size_t segment_count = this->segment_list_->size();
++    oshdr.put_sh_info(segment_count >= elfcpp::PN_XNUM ? segment_count : 0);
++
+     oshdr.put_sh_addralign(0);
+     oshdr.put_sh_entsize(0);
+   }
+@@ -473,8 +475,11 @@ Output_file_header::do_sized_write(Outpu
+   else
+     {
+       oehdr.put_e_phentsize(elfcpp::Elf_sizes<size>::phdr_size);
+-      oehdr.put_e_phnum(this->segment_header_->data_size()
+-			/ elfcpp::Elf_sizes<size>::phdr_size);
++      size_t phnum = (this->segment_header_->data_size()
++		      / elfcpp::Elf_sizes<size>::phdr_size);
++      if (phnum > elfcpp::PN_XNUM)
++	phnum = elfcpp::PN_XNUM;
++      oehdr.put_e_phnum(phnum);
+     }
+ 
+   oehdr.put_e_shentsize(elfcpp::Elf_sizes<size>::shdr_size);
+Index: binutils-2.20.51.0.2/include/elf/common.h
+===================================================================
+--- binutils-2.20.51.0.2.orig/include/elf/common.h
++++ binutils-2.20.51.0.2/include/elf/common.h
+@@ -403,6 +403,9 @@
+ #define EV_NONE		0		/* Invalid ELF version */
+ #define EV_CURRENT	1		/* Current version */
+ 
++/* Value for e_phnum. */
++#define PN_XNUM		0xffff		/* Extended numbering */
++
+ /* Values for program header, p_type field.  */
+ 
+ #define PT_NULL		0		/* Program header table entry unused */

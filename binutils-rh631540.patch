@@ -1,0 +1,1588 @@
+2010-11-25  Andreas Krebbel  <Andreas.Krebbel@de.ibm.com>
+
+gas/:
+	* config/tc-s390.c (current_cpu): Initialize with latest CPU.
+	(init_default_arch): Default to z/Architecture mode if CPU provides it.
+	Remove the check setting the CPU default.
+opcodes/:
+	* opcode/s390.h (enum s390_opcode_cpu_val): Add S390_OPCODE_MAXCPU.
+
+2010-10-27  Andreas Krebbel  <Andreas.Krebbel@de.ibm.com>
+
+	* ld-s390/tlsbin.dd: bc 0,0 -> nop 0 and bcr 0,%r0 -> nopr %r0.
+
+2010-09-30  Pierre Muller  <muller@ics.u-strasbg.fr>
+
+	* s390-mkopc.c (main): Exit with error 1 if sscanf fails
+	to parse all 6 parameters.
+
+2010-09-28  Pierre Muller  <muller@ics.u-strasbg.fr>
+
+	* s390-mkopc.c (main): Change description array size to 80.
+	Add maximum length of 79 to description parsing.
+
+2010-10-28  Andreas Krebbel  <Andreas.Krebbel@de.ibm.com>
+
+gas/:
+	* config/tc-s390.c (md_begin): Only add to hash table if cpu and
+	mode mask fit.
+opcodes/:
+	* s390-opc.txt: cfxr, cfdr and cfer z900 -> g5.
+
+2010-10-11  Andreas Krebbel  <Andreas.Krebbel@de.ibm.com>
+
+opcodes/:
+	* s390-opc.c: Make the instruction masks for the load/store on
+	condition instructions to cover the condition code mask as well.
+	* s390-opc.txt: lgoc -> locg and stgoc -> stocg.
+gas/testsuite/:
+	* gas/s390/zarch-z196.d: Adjust the load/store on condition
+	instructions.
+	* gas/s390/zarch-z196.s: Likewise.
+
+2010-09-27  Andreas Krebbel  <Andreas.Krebbel@de.ibm.com>
+
+opcodes/:
+	* s390-mkopc.c (enum s390_opcde_cpu_val): Add S390_OPCODE_Z196.
+	(main): Recognize the new CPU string.
+	* s390-opc.c: Add new instruction formats and masks.
+	* s390-opc.txt: Add new z196 instructions.
+include/:
+	* opcode/s390.h: Add S390_OPCODE_Z196 to enum s390_opcode_cpu_val.
+gas/:
+	* config/tc-s390.c: (md_parse_option): New option -march=z196.
+	* doc/c-s390.texi: Document new option.
+gas/testsuite/:
+	* gas/s390/s390.exp: Run the zarch-z196 test.
+	* gas/s390/zarch-z196.d: Add new instructions.
+	* gas/s390/zarch-z196.s: Likewise.
+	* gas/s390/zarch-z9-109.d: Likewise.
+	* gas/s390/zarch-z9-109.s: Likewise.
+
+2010-09-27  Andreas Krebbel  <Andreas.Krebbel@de.ibm.com>
+
+opcodes/:
+	* s390-dis.c (print_insn_s390): Pick instruction with most
+	specific mask.
+	* s390-opc.c: Add unused bits to the insn mask.
+	* s390-opc.txt: Reorder some instructions to prefer more recent
+	versions.
+gas/testsuite/:
+	* gas/s390/esa-g5.d: Adjust serveral instructions.
+	* gas/s390/esa-reloc.d: Likewise.
+	* gas/s390/esa-z990.d: Likewise.
+	* gas/s390/zarch-reloc.d: Likewise.
+	* gas/s390/zarch-z10.d: Likewise.
+	* gas/s390/zarch-z9-ec.d: Likewise.
+	* gas/s390/zarch-z900.d: Likewise.
+ld/testsuite/:
+	* ld-s390/tlsbin.dd: bcr 0,%r7 -> nopr %r7.
+	* ld-s390/tlsbin_64.dd: Likewise.
+	* ld-s390/tlspic.dd: Likewise.
+	* ld-s390/tlspic_64.dd: Likewise.
+
+Index: binutils-2.20.51.0.2/gas/config/tc-s390.c
+===================================================================
+--- binutils-2.20.51.0.2.orig/gas/config/tc-s390.c
++++ binutils-2.20.51.0.2/gas/config/tc-s390.c
+@@ -38,8 +38,11 @@ static char *default_arch = DEFAULT_ARCH
+ /* Either 32 or 64, selects file format.  */
+ static int s390_arch_size = 0;
+ 
++/* If no -march option was given default to the highest available CPU.
++   Since with S/390 a newer CPU always supports everything from its
++   predecessors this will accept every valid asm input.  */
++static unsigned int current_cpu = S390_OPCODE_MAXCPU - 1;
+ static unsigned int current_mode_mask = 0;
+-static unsigned int current_cpu = -1U;
+ 
+ /* Whether to use user friendly register names. Default is TRUE.  */
+ #ifndef TARGET_REG_NAMES_P
+@@ -328,18 +331,12 @@ init_default_arch (void)
+ 
+   if (current_mode_mask == 0)
+     {
+-      if (s390_arch_size == 32)
++      /* Default to z/Architecture mode if the CPU supports it.  */
++      if (current_cpu < S390_OPCODE_Z900)
+ 	current_mode_mask = 1 << S390_OPCODE_ESA;
+       else
+ 	current_mode_mask = 1 << S390_OPCODE_ZARCH;
+     }
+-  if (current_cpu == -1U)
+-    {
+-      if (current_mode_mask == (1 << S390_OPCODE_ESA))
+-	current_cpu = S390_OPCODE_G5;
+-      else
+-	current_cpu = S390_OPCODE_Z900;
+-    }
+ }
+ 
+ /* Called by TARGET_FORMAT.  */
+@@ -399,6 +396,8 @@ md_parse_option (int c, char *arg)
+ 	    current_cpu = S390_OPCODE_Z9_EC;
+ 	  else if (strcmp (arg + 5, "z10") == 0)
+ 	    current_cpu = S390_OPCODE_Z10;
++	  else if (strcmp (arg + 5, "z196") == 0)
++	    current_cpu = S390_OPCODE_Z196;
+ 	  else
+ 	    {
+ 	      as_bad (_("invalid switch -m%s"), arg);
+@@ -504,13 +503,18 @@ md_begin (void)
+ 	    break;
+ 	  op++;
+         }
+-      retval = hash_insert (s390_opcode_hash, op->name, (void *) op);
+-      if (retval != (const char *) NULL)
+-        {
+-          as_bad (_("Internal assembler error for instruction %s"),
+-		  op->name);
+-	  dup_insn = TRUE;
++
++      if (op->min_cpu <= current_cpu && (op->modes & current_mode_mask))
++	{
++	  retval = hash_insert (s390_opcode_hash, op->name, (void *) op);
++	  if (retval != (const char *) NULL)
++	    {
++	      as_bad (_("Internal assembler error for instruction %s"),
++		      op->name);
++	      dup_insn = TRUE;
++	    }
+ 	}
++
+       while (op < op_end - 1 && strcmp (op->name, op[1].name) == 0)
+ 	op++;
+       }
+Index: binutils-2.20.51.0.2/gas/doc/c-s390.texi
+===================================================================
+--- binutils-2.20.51.0.2.orig/gas/doc/c-s390.texi
++++ binutils-2.20.51.0.2/gas/doc/c-s390.texi
+@@ -17,7 +17,7 @@
+ The s390 version of @code{@value{AS}} supports two architectures modes
+ and seven chip levels. The architecture modes are the Enterprise System
+ Architecture (ESA) and the newer z/Architecture mode. The chip levels
+-are g5, g6, z900, z990, z9-109, z9-ec and z10.
++are g5, g6, z900, z990, z9-109, z9-ec, z10 and z196.
+ 
+ @menu
+ * s390 Options::                Command-line Options.
+@@ -64,8 +64,9 @@ are recognized: 
+ @code{z900},
+ @code{z990},
+ @code{z9-109},
+-@code{z9-ec} and
+-@code{z10}.
++@code{z9-ec},
++@code{z10} and
++@code{z196}.
+ Assembling an instruction that is not supported on the target processor
+ results in an error message. Do not specify @code{g5} or @code{g6}
+ with @samp{-mzarch}.
+Index: binutils-2.20.51.0.2/gas/testsuite/gas/s390/esa-g5.d
+===================================================================
+--- binutils-2.20.51.0.2.orig/gas/testsuite/gas/s390/esa-g5.d
++++ binutils-2.20.51.0.2/gas/testsuite/gas/s390/esa-g5.d
+@@ -225,10 +225,10 @@ Disassembly of section .text:
+ .*:	b3 24 00 69 [	 ]*lder	%f6,%f9
+ .*:	28 69 [	 ]*ldr	%f6,%f9
+ .*:	b3 45 00 69 [	 ]*ldxbr	%f6,%f9
+-.*:	25 69 [	 ]*lrdr	%f6,%f9
++.*:	25 69 [	 ]*ldxr	%f6,%f9
+ .*:	78 65 af ff [	 ]*le	%f6,4095\(%r5,%r10\)
+ .*:	b3 44 00 69 [	 ]*ledbr	%f6,%f9
+-.*:	35 69 [	 ]*lrer	%f6,%f9
++.*:	35 69 [	 ]*ledr	%f6,%f9
+ .*:	38 69 [	 ]*ler	%f6,%f9
+ .*:	b3 46 00 69 [	 ]*lexbr	%f6,%f9
+ .*:	b3 66 00 69 [	 ]*lexr	%f6,%f9
+@@ -253,8 +253,8 @@ Disassembly of section .text:
+ .*:	b3 60 00 69 [	 ]*lpxr	%f6,%f9
+ .*:	18 69 [	 ]*lr	%r6,%r9
+ .*:	b1 65 af ff [	 ]*lra	%r6,4095\(%r5,%r10\)
+-.*:	25 69 [	 ]*lrdr	%f6,%f9
+-.*:	35 69 [	 ]*lrer	%f6,%f9
++.*:	25 69 [	 ]*ldxr	%f6,%f9
++.*:	35 69 [	 ]*ledr	%f6,%f9
+ .*:	b3 12 00 69 [	 ]*ltdbr	%f6,%f9
+ .*:	22 69 [	 ]*ltdr	%f6,%f9
+ .*:	b3 02 00 69 [	 ]*ltebr	%f6,%f9
+@@ -284,17 +284,17 @@ Disassembly of section .text:
+ .*:	6c 65 af ff [	 ]*md	%f6,4095\(%r5,%r10\)
+ .*:	ed 65 af ff 00 1c [	 ]*mdb	%f6,4095\(%r5,%r10\)
+ .*:	b3 1c 00 69 [	 ]*mdbr	%f6,%f9
+-.*:	7c 65 af ff [	 ]*me	%f6,4095\(%r5,%r10\)
++.*:	7c 65 af ff [	 ]*mde	%f6,4095\(%r5,%r10\)
+ .*:	ed 65 af ff 00 0c [	 ]*mdeb	%f6,4095\(%r5,%r10\)
+ .*:	b3 0c 00 69 [	 ]*mdebr	%f6,%f9
+-.*:	3c 69 [	 ]*mer	%f6,%f9
++.*:	3c 69 [	 ]*mder	%f6,%f9
+ .*:	2c 69 [	 ]*mdr	%f6,%f9
+-.*:	7c 65 af ff [	 ]*me	%f6,4095\(%r5,%r10\)
++.*:	7c 65 af ff [	 ]*mde	%f6,4095\(%r5,%r10\)
+ .*:	ed 65 af ff 00 37 [	 ]*mee	%f6,4095\(%r5,%r10\)
+ .*:	ed 65 af ff 00 17 [	 ]*meeb	%f6,4095\(%r5,%r10\)
+ .*:	b3 17 00 69 [	 ]*meebr	%f6,%f9
+ .*:	b3 37 00 69 [	 ]*meer	%f6,%f9
+-.*:	3c 69 [	 ]*mer	%f6,%f9
++.*:	3c 69 [	 ]*mder	%f6,%f9
+ .*:	4c 65 af ff [	 ]*mh	%r6,4095\(%r5,%r10\)
+ .*:	a7 6c 80 01 [	 ]*mhi	%r6,-32767
+ .*:	fc 58 5f ff af ff [	 ]*mp	4095\(6,%r5\),4095\(9,%r10\)
+@@ -332,8 +332,8 @@ Disassembly of section .text:
+ .*:	54 65 af ff [	 ]*n	%r6,4095\(%r5,%r10\)
+ .*:	d4 ff 5f ff af ff [	 ]*nc	4095\(256,%r5\),4095\(%r10\)
+ .*:	94 ff 5f ff [	 ]*ni	4095\(%r5\),255
+-.*:	47 05 af ff [	 ]*bc	0,4095\(%r5,%r10\)
+-.*:	07 09 [	 ]*bcr	0,%r9
++.*:	47 05 af ff [	 ]*nop	4095\(%r5,%r10\)
++.*:	07 09 [	 ]*nopr	%r9
+ .*:	14 69 [	 ]*nr	%r6,%r9
+ .*:	56 65 af ff [	 ]*o	%r6,4095\(%r5,%r10\)
+ .*:	d6 ff 5f ff af ff [	 ]*oc	4095\(256,%r5\),4095\(%r10\)
+@@ -450,10 +450,10 @@ Disassembly of section .text:
+ .*:	b3 58 00 69 [	 ]*thder	%f6,%f9
+ .*:	b3 59 00 69 [	 ]*thdr	%f6,%f9
+ .*:	91 ff 5f ff [	 ]*tm	4095\(%r5\),255
+-.*:	a7 60 ff ff [	 ]*tmh	%r6,65535
+-.*:	a7 61 ff ff [	 ]*tml	%r6,65535
+-.*:	a7 60 ff ff [	 ]*tmh	%r6,65535
+-.*:	a7 61 ff ff [	 ]*tml	%r6,65535
++.*:	a7 60 ff ff [	 ]*tmlh	%r6,65535
++.*:	a7 61 ff ff [	 ]*tmll	%r6,65535
++.*:	a7 60 ff ff [	 ]*tmlh	%r6,65535
++.*:	a7 61 ff ff [	 ]*tmll	%r6,65535
+ .*:	eb 50 5f ff 00 c0 [	 ]*tp	4095\(6,%r5\)
+ .*:	b2 36 5f ff [	 ]*tpi	4095\(%r5\)
+ .*:	e5 01 5f ff af ff [	 ]*tprot	4095\(%r5\),4095\(%r10\)
+@@ -462,11 +462,11 @@ Disassembly of section .text:
+ .*:	01 ff [	 ]*trap2
+ .*:	b2 ff 5f ff [	 ]*trap4	4095\(%r5\)
+ .*:	b2 a5 00 69 [	 ]*tre	%r6,%r9
+-.*:	b9 93 00 69 [	 ]*troo	%r6,%r9,0
+-.*:	b9 92 00 69 [	 ]*trot	%r6,%r9,0
++.*:	b9 93 00 69 [	 ]*troo	%r6,%r9
++.*:	b9 92 00 69 [	 ]*trot	%r6,%r9
+ .*:	dd ff 5f ff af ff [	 ]*trt	4095\(256,%r5\),4095\(%r10\)
+-.*:	b9 91 00 69 [	 ]*trto	%r6,%r9,0
+-.*:	b9 90 00 69 [	 ]*trtt	%r6,%r9,0
++.*:	b9 91 00 69 [	 ]*trto	%r6,%r9
++.*:	b9 90 00 69 [	 ]*trtt	%r6,%r9
+ .*:	93 00 5f ff [	 ]*ts	4095\(%r5\)
+ .*:	b2 35 5f ff [	 ]*tsch	4095\(%r5\)
+ .*:	f3 58 5f ff af ff [	 ]*unpk	4095\(6,%r5\),4095\(9,%r10\)
+@@ -479,4 +479,4 @@ Disassembly of section .text:
+ .*:	17 69 [	 ]*xr	%r6,%r9
+ .*:	b2 76 00 00 [	 ]*xsch
+ .*:	f8 58 5f ff af ff [	 ]*zap	4095\(6,%r5\),4095\(9,%r10\)
+-.*:	07 07 [ 	]*bcr	0,%r7
++.*:	07 07 [ 	]*nopr	%r7
+Index: binutils-2.20.51.0.2/gas/testsuite/gas/s390/esa-reloc.d
+===================================================================
+--- binutils-2.20.51.0.2.orig/gas/testsuite/gas/s390/esa-reloc.d
++++ binutils-2.20.51.0.2/gas/testsuite/gas/s390/esa-reloc.d
+@@ -48,4 +48,4 @@ Disassembly of section .text:
+ [ 	]*50: R_390_PLT16DBL	foo\+0x2
+   52:	00 00 00 00 [ 	]*.long	0x00000000
+ [ 	]*52: R_390_PLT32	foo\+0x4
+-  56:	07 07 [ 	]*bcr	0,%r7
++  56:	07 07 [ 	]*nopr	%r7
+Index: binutils-2.20.51.0.2/gas/testsuite/gas/s390/esa-z990.d
+===================================================================
+--- binutils-2.20.51.0.2.orig/gas/testsuite/gas/s390/esa-z990.d
++++ binutils-2.20.51.0.2/gas/testsuite/gas/s390/esa-z990.d
+@@ -12,4 +12,4 @@ Disassembly of section .text:
+ .*:	b9 3f 00 69 [	 ]*klmd	%r6,%r9
+ .*:	b9 1e 00 69 [	 ]*kmac	%r6,%r9
+ .*:	eb 69 50 00 80 8f [	 ]*clclu	%r6,%r9,-524288\(%r5\)
+-.*:	07 07 [ 	]*bcr	0,%r7
++.*:	07 07 [ 	]*nopr	%r7
+Index: binutils-2.20.51.0.2/gas/testsuite/gas/s390/s390.exp
+===================================================================
+--- binutils-2.20.51.0.2.orig/gas/testsuite/gas/s390/s390.exp
++++ binutils-2.20.51.0.2/gas/testsuite/gas/s390/s390.exp
+@@ -21,6 +21,7 @@ if [expr [istarget "s390-*-*"] ||  [ista
+     run_dump_test "zarch-z9-109" "{as -m64} {as -march=z9-109}"
+     run_dump_test "zarch-z9-ec" "{as -m64} {as -march=z9-ec}"
+     run_dump_test "zarch-z10" "{as -m64} {as -march=z10}"
++    run_dump_test "zarch-z196" "{as -m64} {as -march=z196}"
+     run_dump_test "zarch-reloc" "{as -m64}"
+     run_dump_test "zarch-operands" "{as -m64} {as -march=z9-109}"
+ }
+Index: binutils-2.20.51.0.2/gas/testsuite/gas/s390/zarch-reloc.d
+===================================================================
+--- binutils-2.20.51.0.2.orig/gas/testsuite/gas/s390/zarch-reloc.d
++++ binutils-2.20.51.0.2/gas/testsuite/gas/s390/zarch-reloc.d
+@@ -29,4 +29,4 @@ Disassembly of section .text:
+ [ 	]*52: R_390_PLT32DBL	foo\+0x2
+ [ 	]*...
+ [ 	]*56: R_390_PLT64	foo\+0x6
+-  5e:	07 07 [ 	]*bcr	0,%r7
++  5e:	07 07 [ 	]*nopr	%r7
+Index: binutils-2.20.51.0.2/gas/testsuite/gas/s390/zarch-z10.d
+===================================================================
+--- binutils-2.20.51.0.2.orig/gas/testsuite/gas/s390/zarch-z10.d
++++ binutils-2.20.51.0.2/gas/testsuite/gas/s390/zarch-z10.d
+@@ -374,4 +374,4 @@ Disassembly of section .text:
+ .*:	b9 bf 00 67 [ 	]*trte	%r6,%r7,0
+ .*:	b9 bd a0 67 [ 	]*trtre	%r6,%r7,10
+ .*:	b9 bd 00 67 [ 	]*trtre	%r6,%r7,0
+-.*:	07 07 [ 	]*bcr	0,%r7
+\ No newline at end of file
++.*:	07 07 [ 	]*nopr	%r7
+\ No newline at end of file
+Index: binutils-2.20.51.0.2/gas/testsuite/gas/s390/zarch-z196.d
+===================================================================
+--- /dev/null
++++ binutils-2.20.51.0.2/gas/testsuite/gas/s390/zarch-z196.d
+@@ -0,0 +1,255 @@
++#name: s390x opcode
++#objdump: -drw
++
++.*: +file format .*
++
++Disassembly of section .text:
++
++.* <foo>:
++.*:	b9 c8 80 67 [ 	]*ahhhr	%r6,%r7,%r8
++.*:	b9 d8 80 67 [ 	]*ahhlr	%r6,%r7,%r8
++.*:	cc 68 ff ff 02 18 [ 	]*aih	%r6,-65000
++.*:	b9 ca 80 67 [ 	]*alhhhr	%r6,%r7,%r8
++.*:	b9 da 80 67 [ 	]*alhhlr	%r6,%r7,%r8
++.*:	cc 6a 00 00 fd e8 [ 	]*alsih	%r6,65000
++.*:	cc 6b 00 00 fd e8 [ 	]*alsihn	%r6,65000
++.*:	cc 66 00 00 00 00 [ 	]*brcth	%r6,22 <foo\+0x22>
++.*:	b9 cd 00 67 [ 	]*chhr	%r6,%r7
++.*:	b9 dd 00 67 [ 	]*chlr	%r6,%r7
++.*:	e3 67 85 b3 01 cd [ 	]*chf	%r6,5555\(%r7,%r8\)
++.*:	cc 6d 00 00 fd e8 [ 	]*cih	%r6,65000
++.*:	b9 cf 00 67 [ 	]*clhhr	%r6,%r7
++.*:	b9 df 00 67 [ 	]*clhlr	%r6,%r7
++.*:	e3 67 85 b3 01 cf [ 	]*clhf	%r6,5555\(%r7,%r8\)
++.*:	cc 6f 00 09 eb 10 [ 	]*clih	%r6,650000
++.*:	e3 67 8a 4d fe c0 [ 	]*lbh	%r6,-5555\(%r7,%r8\)
++.*:	e3 67 8a 4d fe c4 [ 	]*lhh	%r6,-5555\(%r7,%r8\)
++.*:	e3 67 8a 4d fe ca [ 	]*lfh	%r6,-5555\(%r7,%r8\)
++.*:	e3 67 8a 4d fe c2 [ 	]*llch	%r6,-5555\(%r7,%r8\)
++.*:	e3 67 8a 4d fe c6 [ 	]*llhh	%r6,-5555\(%r7,%r8\)
++.*:	ec 67 0c 0d 0e 5d [ 	]*risbhg	%r6,%r7,12,13,14
++.*:	ec 67 0c 0d 0e 51 [ 	]*risblg	%r6,%r7,12,13,14
++.*:	e3 67 8a 4d fe c3 [ 	]*stch	%r6,-5555\(%r7,%r8\)
++.*:	e3 67 8a 4d fe c7 [ 	]*sthh	%r6,-5555\(%r7,%r8\)
++.*:	e3 67 8a 4d fe cb [ 	]*stfh	%r6,-5555\(%r7,%r8\)
++.*:	b9 c9 80 67 [ 	]*shhhr	%r6,%r7,%r8
++.*:	b9 d9 80 67 [ 	]*shhlr	%r6,%r7,%r8
++.*:	b9 cb 80 67 [ 	]*slhhhr	%r6,%r7,%r8
++.*:	b9 db 80 67 [ 	]*slhhlr	%r6,%r7,%r8
++.*:	eb 67 8a 4d fe f8 [ 	]*laa	%r6,%r7,-5555\(%r8\)
++.*:	eb 67 8a 4d fe e8 [ 	]*laag	%r6,%r7,-5555\(%r8\)
++.*:	eb 67 8a 4d fe fa [ 	]*laal	%r6,%r7,-5555\(%r8\)
++.*:	eb 67 8a 4d fe ea [ 	]*laalg	%r6,%r7,-5555\(%r8\)
++.*:	eb 67 8a 4d fe f4 [ 	]*lan	%r6,%r7,-5555\(%r8\)
++.*:	eb 67 8a 4d fe e4 [ 	]*lang	%r6,%r7,-5555\(%r8\)
++.*:	eb 67 8a 4d fe f7 [ 	]*lax	%r6,%r7,-5555\(%r8\)
++.*:	eb 67 8a 4d fe e7 [ 	]*laxg	%r6,%r7,-5555\(%r8\)
++.*:	eb 67 8a 4d fe f6 [ 	]*lao	%r6,%r7,-5555\(%r8\)
++.*:	eb 67 8a 4d fe e6 [ 	]*laog	%r6,%r7,-5555\(%r8\)
++.*:	c8 64 78 ae 84 57 [ 	]*lpd	%r6,2222\(%r7\),1111\(%r8\)
++.*:	c8 65 78 ae 84 57 [ 	]*lpdg	%r6,2222\(%r7\),1111\(%r8\)
++.*:	b9 f2 10 67 [ 	]*locro	%r6,%r7
++.*:	b9 f2 20 67 [ 	]*locrh	%r6,%r7
++.*:	b9 f2 20 67 [ 	]*locrh	%r6,%r7
++.*:	b9 f2 30 67 [ 	]*locrnle	%r6,%r7
++.*:	b9 f2 40 67 [ 	]*locrl	%r6,%r7
++.*:	b9 f2 40 67 [ 	]*locrl	%r6,%r7
++.*:	b9 f2 50 67 [ 	]*locrnhe	%r6,%r7
++.*:	b9 f2 60 67 [ 	]*locrlh	%r6,%r7
++.*:	b9 f2 70 67 [ 	]*locrne	%r6,%r7
++.*:	b9 f2 70 67 [ 	]*locrne	%r6,%r7
++.*:	b9 f2 80 67 [ 	]*locre	%r6,%r7
++.*:	b9 f2 80 67 [ 	]*locre	%r6,%r7
++.*:	b9 f2 90 67 [ 	]*locrnlh	%r6,%r7
++.*:	b9 f2 a0 67 [ 	]*locrhe	%r6,%r7
++.*:	b9 f2 b0 67 [ 	]*locrnl	%r6,%r7
++.*:	b9 f2 b0 67 [ 	]*locrnl	%r6,%r7
++.*:	b9 f2 c0 67 [ 	]*locrle	%r6,%r7
++.*:	b9 f2 d0 67 [ 	]*locrnh	%r6,%r7
++.*:	b9 f2 d0 67 [ 	]*locrnh	%r6,%r7
++.*:	b9 f2 e0 67 [ 	]*locrno	%r6,%r7
++.*:	b9 f2 80 67 [ 	]*locre	%r6,%r7
++.*:	b9 e2 10 67 [ 	]*locgro	%r6,%r7
++.*:	b9 e2 20 67 [ 	]*locgrh	%r6,%r7
++.*:	b9 e2 20 67 [ 	]*locgrh	%r6,%r7
++.*:	b9 e2 30 67 [ 	]*locgrnle	%r6,%r7
++.*:	b9 e2 40 67 [ 	]*locgrl	%r6,%r7
++.*:	b9 e2 40 67 [ 	]*locgrl	%r6,%r7
++.*:	b9 e2 50 67 [ 	]*locgrnhe	%r6,%r7
++.*:	b9 e2 60 67 [ 	]*locgrlh	%r6,%r7
++.*:	b9 e2 70 67 [ 	]*locgrne	%r6,%r7
++.*:	b9 e2 70 67 [ 	]*locgrne	%r6,%r7
++.*:	b9 e2 80 67 [ 	]*locgre	%r6,%r7
++.*:	b9 e2 80 67 [ 	]*locgre	%r6,%r7
++.*:	b9 e2 90 67 [ 	]*locgrnlh	%r6,%r7
++.*:	b9 e2 a0 67 [ 	]*locgrhe	%r6,%r7
++.*:	b9 e2 b0 67 [ 	]*locgrnl	%r6,%r7
++.*:	b9 e2 b0 67 [ 	]*locgrnl	%r6,%r7
++.*:	b9 e2 c0 67 [ 	]*locgrle	%r6,%r7
++.*:	b9 e2 d0 67 [ 	]*locgrnh	%r6,%r7
++.*:	b9 e2 d0 67 [ 	]*locgrnh	%r6,%r7
++.*:	b9 e2 e0 67 [ 	]*locgrno	%r6,%r7
++.*:	b9 e2 80 67 [ 	]*locgre	%r6,%r7
++.*:	eb 61 7a 4d fe f2 [ 	]*loco	%r6,-5555\(%r7\)
++.*:	eb 62 7a 4d fe f2 [ 	]*loch	%r6,-5555\(%r7\)
++.*:	eb 62 7a 4d fe f2 [ 	]*loch	%r6,-5555\(%r7\)
++.*:	eb 63 7a 4d fe f2 [ 	]*locnle	%r6,-5555\(%r7\)
++.*:	eb 64 7a 4d fe f2 [ 	]*locl	%r6,-5555\(%r7\)
++.*:	eb 64 7a 4d fe f2 [ 	]*locl	%r6,-5555\(%r7\)
++.*:	eb 65 7a 4d fe f2 [ 	]*locnhe	%r6,-5555\(%r7\)
++.*:	eb 66 7a 4d fe f2 [ 	]*loclh	%r6,-5555\(%r7\)
++.*:	eb 67 7a 4d fe f2 [ 	]*locne	%r6,-5555\(%r7\)
++.*:	eb 67 7a 4d fe f2 [ 	]*locne	%r6,-5555\(%r7\)
++.*:	eb 68 7a 4d fe f2 [ 	]*loce	%r6,-5555\(%r7\)
++.*:	eb 68 7a 4d fe f2 [ 	]*loce	%r6,-5555\(%r7\)
++.*:	eb 69 7a 4d fe f2 [ 	]*locnlh	%r6,-5555\(%r7\)
++.*:	eb 6a 7a 4d fe f2 [ 	]*loche	%r6,-5555\(%r7\)
++.*:	eb 6b 7a 4d fe f2 [ 	]*locnl	%r6,-5555\(%r7\)
++.*:	eb 6b 7a 4d fe f2 [ 	]*locnl	%r6,-5555\(%r7\)
++.*:	eb 6c 7a 4d fe f2 [ 	]*locle	%r6,-5555\(%r7\)
++.*:	eb 6d 7a 4d fe f2 [ 	]*locnh	%r6,-5555\(%r7\)
++.*:	eb 6d 7a 4d fe f2 [ 	]*locnh	%r6,-5555\(%r7\)
++.*:	eb 6e 7a 4d fe f2 [ 	]*locno	%r6,-5555\(%r7\)
++.*:	eb 68 7a 4d fe f2 [ 	]*loce	%r6,-5555\(%r7\)
++.*:	eb 61 7a 4d fe e2 [ 	]*locgo	%r6,-5555\(%r7\)
++.*:	eb 62 7a 4d fe e2 [ 	]*locgh	%r6,-5555\(%r7\)
++.*:	eb 62 7a 4d fe e2 [ 	]*locgh	%r6,-5555\(%r7\)
++.*:	eb 63 7a 4d fe e2 [ 	]*locgnle	%r6,-5555\(%r7\)
++.*:	eb 64 7a 4d fe e2 [ 	]*locgl	%r6,-5555\(%r7\)
++.*:	eb 64 7a 4d fe e2 [ 	]*locgl	%r6,-5555\(%r7\)
++.*:	eb 65 7a 4d fe e2 [ 	]*locgnhe	%r6,-5555\(%r7\)
++.*:	eb 66 7a 4d fe e2 [ 	]*locglh	%r6,-5555\(%r7\)
++.*:	eb 67 7a 4d fe e2 [ 	]*locgne	%r6,-5555\(%r7\)
++.*:	eb 67 7a 4d fe e2 [ 	]*locgne	%r6,-5555\(%r7\)
++.*:	eb 68 7a 4d fe e2 [ 	]*locge	%r6,-5555\(%r7\)
++.*:	eb 68 7a 4d fe e2 [ 	]*locge	%r6,-5555\(%r7\)
++.*:	eb 69 7a 4d fe e2 [ 	]*locgnlh	%r6,-5555\(%r7\)
++.*:	eb 6a 7a 4d fe e2 [ 	]*locghe	%r6,-5555\(%r7\)
++.*:	eb 6b 7a 4d fe e2 [ 	]*locgnl	%r6,-5555\(%r7\)
++.*:	eb 6b 7a 4d fe e2 [ 	]*locgnl	%r6,-5555\(%r7\)
++.*:	eb 6c 7a 4d fe e2 [ 	]*locgle	%r6,-5555\(%r7\)
++.*:	eb 6d 7a 4d fe e2 [ 	]*locgnh	%r6,-5555\(%r7\)
++.*:	eb 6d 7a 4d fe e2 [ 	]*locgnh	%r6,-5555\(%r7\)
++.*:	eb 6e 7a 4d fe e2 [ 	]*locgno	%r6,-5555\(%r7\)
++.*:	eb 68 7a 4d fe e2 [ 	]*locge	%r6,-5555\(%r7\)
++.*:	eb 61 7a 4d fe f3 [ 	]*stoco	%r6,-5555\(%r7\)
++.*:	eb 62 7a 4d fe f3 [ 	]*stoch	%r6,-5555\(%r7\)
++.*:	eb 62 7a 4d fe f3 [ 	]*stoch	%r6,-5555\(%r7\)
++.*:	eb 63 7a 4d fe f3 [ 	]*stocnle	%r6,-5555\(%r7\)
++.*:	eb 64 7a 4d fe f3 [ 	]*stocl	%r6,-5555\(%r7\)
++.*:	eb 64 7a 4d fe f3 [ 	]*stocl	%r6,-5555\(%r7\)
++.*:	eb 65 7a 4d fe f3 [ 	]*stocnhe	%r6,-5555\(%r7\)
++.*:	eb 66 7a 4d fe f3 [ 	]*stoclh	%r6,-5555\(%r7\)
++.*:	eb 67 7a 4d fe f3 [ 	]*stocne	%r6,-5555\(%r7\)
++.*:	eb 67 7a 4d fe f3 [ 	]*stocne	%r6,-5555\(%r7\)
++.*:	eb 68 7a 4d fe f3 [ 	]*stoce	%r6,-5555\(%r7\)
++.*:	eb 68 7a 4d fe f3 [ 	]*stoce	%r6,-5555\(%r7\)
++.*:	eb 69 7a 4d fe f3 [ 	]*stocnlh	%r6,-5555\(%r7\)
++.*:	eb 6a 7a 4d fe f3 [ 	]*stoche	%r6,-5555\(%r7\)
++.*:	eb 6b 7a 4d fe f3 [ 	]*stocnl	%r6,-5555\(%r7\)
++.*:	eb 6b 7a 4d fe f3 [ 	]*stocnl	%r6,-5555\(%r7\)
++.*:	eb 6c 7a 4d fe f3 [ 	]*stocle	%r6,-5555\(%r7\)
++.*:	eb 6d 7a 4d fe f3 [ 	]*stocnh	%r6,-5555\(%r7\)
++.*:	eb 6d 7a 4d fe f3 [ 	]*stocnh	%r6,-5555\(%r7\)
++.*:	eb 6e 7a 4d fe f3 [ 	]*stocno	%r6,-5555\(%r7\)
++.*:	eb 68 7a 4d fe f3 [ 	]*stoce	%r6,-5555\(%r7\)
++.*:	eb 61 7a 4d fe e3 [ 	]*stocgo	%r6,-5555\(%r7\)
++.*:	eb 62 7a 4d fe e3 [ 	]*stocgh	%r6,-5555\(%r7\)
++.*:	eb 62 7a 4d fe e3 [ 	]*stocgh	%r6,-5555\(%r7\)
++.*:	eb 63 7a 4d fe e3 [ 	]*stocgnle	%r6,-5555\(%r7\)
++.*:	eb 64 7a 4d fe e3 [ 	]*stocgl	%r6,-5555\(%r7\)
++.*:	eb 64 7a 4d fe e3 [ 	]*stocgl	%r6,-5555\(%r7\)
++.*:	eb 65 7a 4d fe e3 [ 	]*stocgnhe	%r6,-5555\(%r7\)
++.*:	eb 66 7a 4d fe e3 [ 	]*stocglh	%r6,-5555\(%r7\)
++.*:	eb 67 7a 4d fe e3 [ 	]*stocgne	%r6,-5555\(%r7\)
++.*:	eb 67 7a 4d fe e3 [ 	]*stocgne	%r6,-5555\(%r7\)
++.*:	eb 68 7a 4d fe e3 [ 	]*stocge	%r6,-5555\(%r7\)
++.*:	eb 68 7a 4d fe e3 [ 	]*stocge	%r6,-5555\(%r7\)
++.*:	eb 69 7a 4d fe e3 [ 	]*stocgnlh	%r6,-5555\(%r7\)
++.*:	eb 6a 7a 4d fe e3 [ 	]*stocghe	%r6,-5555\(%r7\)
++.*:	eb 6b 7a 4d fe e3 [ 	]*stocgnl	%r6,-5555\(%r7\)
++.*:	eb 6b 7a 4d fe e3 [ 	]*stocgnl	%r6,-5555\(%r7\)
++.*:	eb 6c 7a 4d fe e3 [ 	]*stocgle	%r6,-5555\(%r7\)
++.*:	eb 6d 7a 4d fe e3 [ 	]*stocgnh	%r6,-5555\(%r7\)
++.*:	eb 6d 7a 4d fe e3 [ 	]*stocgnh	%r6,-5555\(%r7\)
++.*:	eb 6e 7a 4d fe e3 [ 	]*stocgno	%r6,-5555\(%r7\)
++.*:	eb 68 7a 4d fe e3 [ 	]*stocge	%r6,-5555\(%r7\)
++.*:	b9 f8 80 67 [ 	]*ark	%r6,%r7,%r8
++.*:	b9 e8 80 67 [ 	]*agrk	%r6,%r7,%r8
++.*:	ec 67 83 00 00 d8 [ 	]*ahik	%r6,%r7,-32000
++.*:	ec 67 83 00 00 d9 [ 	]*aghik	%r6,%r7,-32000
++.*:	b9 fa 80 67 [ 	]*alrk	%r6,%r7,%r8
++.*:	b9 ea 80 67 [ 	]*algrk	%r6,%r7,%r8
++.*:	ec 67 83 00 00 da [ 	]*alhsik	%r6,%r7,-32000
++.*:	ec 67 83 00 00 db [ 	]*alghsik	%r6,%r7,-32000
++.*:	b9 f4 80 67 [ 	]*nrk	%r6,%r7,%r8
++.*:	b9 e4 80 67 [ 	]*ngrk	%r6,%r7,%r8
++.*:	b9 f7 80 67 [ 	]*xrk	%r6,%r7,%r8
++.*:	b9 e7 80 67 [ 	]*xgrk	%r6,%r7,%r8
++.*:	b9 f6 80 67 [ 	]*ork	%r6,%r7,%r8
++.*:	b9 e6 80 67 [ 	]*ogrk	%r6,%r7,%r8
++.*:	eb 67 8a 4d fe dd [ 	]*slak	%r6,%r7,-5555\(%r8\)
++.*:	eb 67 8a 4d fe df [ 	]*sllk	%r6,%r7,-5555\(%r8\)
++.*:	eb 67 8a 4d fe dc [ 	]*srak	%r6,%r7,-5555\(%r8\)
++.*:	eb 67 8a 4d fe de [ 	]*srlk	%r6,%r7,-5555\(%r8\)
++.*:	b9 f9 80 67 [ 	]*srk	%r6,%r7,%r8
++.*:	b9 e9 80 67 [ 	]*sgrk	%r6,%r7,%r8
++.*:	b9 fb 80 67 [ 	]*slrk	%r6,%r7,%r8
++.*:	b9 eb 80 67 [ 	]*slgrk	%r6,%r7,%r8
++.*:	b9 e1 00 67 [ 	]*popcnt	%r6,%r7
++.*:	b9 ae 00 67 [ 	]*rrbm	%r6,%r7
++.*:	b3 94 37 59 [ 	]*cefbra	%f5,3,%r9,7
++.*:	b3 95 37 59 [ 	]*cdfbra	%f5,3,%r9,7
++.*:	b3 96 37 59 [ 	]*cxfbra	%f5,3,%r9,7
++.*:	b3 a4 37 59 [ 	]*cegbra	%f5,3,%r9,7
++.*:	b3 a5 37 59 [ 	]*cdgbra	%f5,3,%r9,7
++.*:	b3 a6 37 59 [ 	]*cxgbra	%f5,3,%r9,7
++.*:	b3 90 37 59 [ 	]*celfbr	%f5,3,%r9,7
++.*:	b3 91 37 59 [ 	]*cdlfbr	%f5,3,%r9,7
++.*:	b3 92 37 59 [ 	]*cxlfbr	%f5,3,%r9,7
++.*:	b3 a0 37 59 [ 	]*celgbr	%f5,3,%r9,7
++.*:	b3 a1 37 59 [ 	]*cdlgbr	%f5,3,%r9,7
++.*:	b3 a2 37 59 [ 	]*cxlgbr	%f5,3,%r9,7
++.*:	b3 98 37 59 [ 	]*cfebra	%r5,3,%f9,7
++.*:	b3 99 37 59 [ 	]*cfdbra	%r5,3,%f9,7
++.*:	b3 9a 37 59 [ 	]*cfxbra	%r5,3,%f9,7
++.*:	b3 a8 37 59 [ 	]*cgebra	%r5,3,%f9,7
++.*:	b3 a9 37 59 [ 	]*cgdbra	%r5,3,%f9,7
++.*:	b3 aa 37 59 [ 	]*cgxbra	%r5,3,%f9,7
++.*:	b3 9c 37 59 [ 	]*clfebr	%r5,3,%f9,7
++.*:	b3 9d 37 59 [ 	]*clfdbr	%r5,3,%f9,7
++.*:	b3 9e 37 59 [ 	]*clfxbr	%r5,3,%f9,7
++.*:	b3 ac 37 59 [ 	]*clgebr	%r5,3,%f9,7
++.*:	b3 ad 37 59 [ 	]*clgdbr	%r5,3,%f9,7
++.*:	b3 ae 37 59 [ 	]*clgxbr	%r5,3,%f9,7
++.*:	b3 57 37 59 [ 	]*fiebra	%f5,3,%f9,7
++.*:	b3 5f 37 59 [ 	]*fidbra	%f5,3,%f9,7
++.*:	b3 47 37 59 [ 	]*fixbra	%f5,3,%f9,7
++.*:	b3 44 37 59 [ 	]*ledbra	%f5,3,%f9,7
++.*:	b3 45 37 59 [ 	]*ldxbra	%f5,3,%f9,7
++.*:	b3 46 37 59 [ 	]*lexbra	%f5,3,%f9,7
++.*:	b3 d2 97 35 [ 	]*adtra	%f3,%f5,%f9,7
++.*:	b3 da 97 35 [ 	]*axtra	%f3,%f5,%f9,7
++.*:	b3 f1 37 59 [ 	]*cdgtra	%f5,3,%r9,7
++.*:	b9 51 37 59 [ 	]*cdftr	%f5,3,%r9,7
++.*:	b9 59 37 59 [ 	]*cxftr	%f5,3,%r9,7
++.*:	b3 f9 37 59 [ 	]*cxgtra	%f5,3,%r9,7
++.*:	b9 52 37 59 [ 	]*cdlgtr	%f5,3,%r9,7
++.*:	b9 5a 37 59 [ 	]*cxlgtr	%f5,3,%r9,7
++.*:	b9 53 37 59 [ 	]*cdlftr	%f5,3,%r9,7
++.*:	b9 5b 37 59 [ 	]*cxlftr	%f5,3,%r9,7
++.*:	b3 e1 37 59 [ 	]*cgdtra	%r5,3,%f9,7
++.*:	b3 e9 37 59 [ 	]*cgxtra	%r5,3,%f9,7
++.*:	b9 41 37 59 [ 	]*cfdtr	%r5,3,%f9,7
++.*:	b9 49 37 59 [ 	]*cfxtr	%r5,3,%f9,7
++.*:	b9 42 37 59 [ 	]*clgdtr	%r5,3,%f9,7
++.*:	b9 4a 37 59 [ 	]*clgxtr	%r5,3,%f9,7
++.*:	b9 43 37 59 [ 	]*clfdtr	%r5,3,%f9,7
++.*:	b9 4b 37 59 [ 	]*clfxtr	%r5,3,%f9,7
++.*:	b3 d1 97 35 [ 	]*ddtra	%f3,%f5,%f9,7
++.*:	b3 d9 97 35 [ 	]*dxtra	%f3,%f5,%f9,7
++.*:	b3 d0 97 35 [ 	]*mdtra	%f3,%f5,%f9,7
++.*:	b3 d8 97 35 [ 	]*mxtra	%f3,%f5,%f9,7
++.*:	b3 d3 97 35 [ 	]*sdtra	%f3,%f5,%f9,7
++.*:	b3 db 97 35 [ 	]*sxtra	%f3,%f5,%f9,7
++.*:	b2 b8 7f a0 [ 	]*srnmb	4000\(%r7\)
+Index: binutils-2.20.51.0.2/gas/testsuite/gas/s390/zarch-z196.s
+===================================================================
+--- /dev/null
++++ binutils-2.20.51.0.2/gas/testsuite/gas/s390/zarch-z196.s
+@@ -0,0 +1,257 @@
++.text
++foo:
++	ahhhr	%r6,%r7,%r8
++	ahhlr	%r6,%r7,%r8
++	aih	%r6,-65000
++	alhhhr	%r6,%r7,%r8
++	alhhlr	%r6,%r7,%r8
++	alsih	%r6,65000
++	alsihn	%r6,65000
++	brcth	%r6,.
++	chhr	%r6,%r7
++	chlr	%r6,%r7
++	chf	%r6,5555(%r7,%r8)
++	cih	%r6,65000
++	clhhr	%r6,%r7
++	clhlr	%r6,%r7
++	clhf	%r6,5555(%r7,%r8)
++	clih	%r6,650000
++	lbh	%r6,-5555(%r7,%r8)
++	lhh	%r6,-5555(%r7,%r8)
++	lfh	%r6,-5555(%r7,%r8)
++	llch	%r6,-5555(%r7,%r8)
++	llhh	%r6,-5555(%r7,%r8)
++	risbhg	%r6,%r7,12,13,14
++	risblg	%r6,%r7,12,13,14
++	stch	%r6,-5555(%r7,%r8)
++	sthh	%r6,-5555(%r7,%r8)
++	stfh	%r6,-5555(%r7,%r8)
++	shhhr	%r6,%r7,%r8
++	shhlr	%r6,%r7,%r8
++	slhhhr	%r6,%r7,%r8
++	slhhlr	%r6,%r7,%r8
++	laa	%r6,%r7,-5555(%r8)
++	laag	%r6,%r7,-5555(%r8)
++	laal	%r6,%r7,-5555(%r8)
++	laalg	%r6,%r7,-5555(%r8)
++	lan	%r6,%r7,-5555(%r8)
++	lang	%r6,%r7,-5555(%r8)
++	lax	%r6,%r7,-5555(%r8)
++	laxg	%r6,%r7,-5555(%r8)
++	lao	%r6,%r7,-5555(%r8)
++	laog	%r6,%r7,-5555(%r8)
++	lpd	%r6,2222(%r7),1111(%r8)
++	lpdg	%r6,2222(%r7),1111(%r8)
++
++	locro	%r6,%r7
++	locrh	%r6,%r7
++	locrp	%r6,%r7
++	locrnle	%r6,%r7
++	locrl	%r6,%r7
++	locrm	%r6,%r7
++	locrnhe	%r6,%r7
++	locrlh	%r6,%r7
++	locrne	%r6,%r7
++	locrnz	%r6,%r7
++	locre	%r6,%r7
++	locrz	%r6,%r7
++	locrnlh	%r6,%r7
++	locrhe	%r6,%r7
++	locrnl	%r6,%r7
++	locrnm	%r6,%r7
++	locrle	%r6,%r7
++	locrnh	%r6,%r7
++	locrnp	%r6,%r7
++	locrno	%r6,%r7
++	locr	%r6,%r7,8
++
++	locgro	%r6,%r7
++	locgrh	%r6,%r7
++	locgrp	%r6,%r7
++	locgrnle %r6,%r7
++	locgrl	%r6,%r7
++	locgrm	%r6,%r7
++	locgrnhe %r6,%r7
++	locgrlh	%r6,%r7
++	locgrne	%r6,%r7
++	locgrnz	%r6,%r7
++	locgre	%r6,%r7
++	locgrz	%r6,%r7
++	locgrnlh %r6,%r7
++	locgrhe	%r6,%r7
++	locgrnl	%r6,%r7
++	locgrnm	%r6,%r7
++	locgrle	%r6,%r7
++	locgrnh	%r6,%r7
++	locgrnp	%r6,%r7
++	locgrno	%r6,%r7
++	locgr	%r6,%r7,8
++
++	loco	%r6,-5555(%r7)
++	loch	%r6,-5555(%r7)
++	locp	%r6,-5555(%r7)
++	locnle	%r6,-5555(%r7)
++	locl	%r6,-5555(%r7)
++	locm	%r6,-5555(%r7)
++	locnhe	%r6,-5555(%r7)
++	loclh	%r6,-5555(%r7)
++	locne	%r6,-5555(%r7)
++	locnz	%r6,-5555(%r7)
++	loce	%r6,-5555(%r7)
++	locz	%r6,-5555(%r7)
++	locnlh	%r6,-5555(%r7)
++	loche	%r6,-5555(%r7)
++	locnl	%r6,-5555(%r7)
++	locnm	%r6,-5555(%r7)
++	locle	%r6,-5555(%r7)
++	locnh	%r6,-5555(%r7)
++	locnp	%r6,-5555(%r7)
++	locno	%r6,-5555(%r7)
++	loc	%r6,-5555(%r7),8
++
++	locgo	%r6,-5555(%r7)
++	locgh	%r6,-5555(%r7)
++	locgp	%r6,-5555(%r7)
++	locgnle	%r6,-5555(%r7)
++	locgl	%r6,-5555(%r7)
++	locgm	%r6,-5555(%r7)
++	locgnhe	%r6,-5555(%r7)
++	locglh	%r6,-5555(%r7)
++	locgne	%r6,-5555(%r7)
++	locgnz	%r6,-5555(%r7)
++	locge	%r6,-5555(%r7)
++	locgz	%r6,-5555(%r7)
++	locgnlh	%r6,-5555(%r7)
++	locghe	%r6,-5555(%r7)
++	locgnl	%r6,-5555(%r7)
++	locgnm	%r6,-5555(%r7)
++	locgle	%r6,-5555(%r7)
++	locgnh	%r6,-5555(%r7)
++	locgnp	%r6,-5555(%r7)
++	locgno	%r6,-5555(%r7)
++	locg	%r6,-5555(%r7),8
++
++	stoco	%r6,-5555(%r7)
++	stoch	%r6,-5555(%r7)
++	stocp	%r6,-5555(%r7)
++	stocnle	%r6,-5555(%r7)
++	stocl	%r6,-5555(%r7)
++	stocm	%r6,-5555(%r7)
++	stocnhe	%r6,-5555(%r7)
++	stoclh	%r6,-5555(%r7)
++	stocne	%r6,-5555(%r7)
++	stocnz	%r6,-5555(%r7)
++	stoce	%r6,-5555(%r7)
++	stocz	%r6,-5555(%r7)
++	stocnlh	%r6,-5555(%r7)
++	stoche	%r6,-5555(%r7)
++	stocnl	%r6,-5555(%r7)
++	stocnm	%r6,-5555(%r7)
++	stocle	%r6,-5555(%r7)
++	stocnh	%r6,-5555(%r7)
++	stocnp	%r6,-5555(%r7)
++	stocno	%r6,-5555(%r7)
++	stoc	%r6,-5555(%r7),8
++
++	stocgo	%r6,-5555(%r7)
++	stocgh	%r6,-5555(%r7)
++	stocgp	%r6,-5555(%r7)
++	stocgnle %r6,-5555(%r7)
++	stocgl	%r6,-5555(%r7)
++	stocgm	%r6,-5555(%r7)
++	stocgnhe %r6,-5555(%r7)
++	stocglh	%r6,-5555(%r7)
++	stocgne	%r6,-5555(%r7)
++	stocgnz	%r6,-5555(%r7)
++	stocge	%r6,-5555(%r7)
++	stocgz	%r6,-5555(%r7)
++	stocgnlh %r6,-5555(%r7)
++	stocghe	%r6,-5555(%r7)
++	stocgnl	%r6,-5555(%r7)
++	stocgnm	%r6,-5555(%r7)
++	stocgle	%r6,-5555(%r7)
++	stocgnh	%r6,-5555(%r7)
++	stocgnp	%r6,-5555(%r7)
++	stocgno	%r6,-5555(%r7)
++	stocg	%r6,-5555(%r7),8
++
++	ark	%r6,%r7,%r8
++	agrk	%r6,%r7,%r8
++	ahik	%r6,%r7,-32000
++	aghik	%r6,%r7,-32000
++	alrk	%r6,%r7,%r8
++	algrk	%r6,%r7,%r8
++	alhsik	%r6,%r7,-32000
++	alghsik	%r6,%r7,-32000
++	nrk	%r6,%r7,%r8
++	ngrk	%r6,%r7,%r8
++	xrk	%r6,%r7,%r8
++	xgrk	%r6,%r7,%r8
++	ork	%r6,%r7,%r8
++	ogrk	%r6,%r7,%r8
++	slak	%r6,%r7,-5555(%r8)
++	sllk	%r6,%r7,-5555(%r8)
++	srak	%r6,%r7,-5555(%r8)
++	srlk	%r6,%r7,-5555(%r8)
++	srk	%r6,%r7,%r8
++	sgrk	%r6,%r7,%r8
++	slrk	%r6,%r7,%r8
++	slgrk	%r6,%r7,%r8
++	popcnt	%r6,%r7
++	rrbm	%r6,%r7
++
++	cefbra %f5,3,%r9,7
++	cdfbra %f5,3,%r9,7
++	cxfbra %f5,3,%r9,7
++	cegbra %f5,3,%r9,7
++	cdgbra %f5,3,%r9,7
++	cxgbra %f5,3,%r9,7
++	celfbr %f5,3,%r9,7
++	cdlfbr %f5,3,%r9,7
++	cxlfbr %f5,3,%r9,7
++	celgbr %f5,3,%r9,7
++	cdlgbr %f5,3,%r9,7
++	cxlgbr %f5,3,%r9,7
++	cfebra %r5,3,%f9,7
++	cfdbra %r5,3,%f9,7
++	cfxbra %r5,3,%f9,7
++	cgebra %r5,3,%f9,7
++	cgdbra %r5,3,%f9,7
++	cgxbra %r5,3,%f9,7
++	clfebr %r5,3,%f9,7
++	clfdbr %r5,3,%f9,7
++	clfxbr %r5,3,%f9,7
++	clgebr %r5,3,%f9,7
++	clgdbr %r5,3,%f9,7
++	clgxbr %r5,3,%f9,7
++	fiebra %f5,3,%f9,7
++	fidbra %f5,3,%f9,7
++	fixbra %f5,3,%f9,7
++	ledbra %f5,3,%f9,7
++	ldxbra %f5,3,%f9,7
++	lexbra %f5,3,%f9,7
++	adtra %f3,%f5,%f9,7
++	axtra %f3,%f5,%f9,7
++	cdgtra %f5,3,%r9,7
++	cdftr %f5,3,%r9,7
++	cxftr %f5,3,%r9,7
++	cxgtra %f5,3,%r9,7
++	cdlgtr %f5,3,%r9,7
++	cxlgtr %f5,3,%r9,7
++	cdlftr %f5,3,%r9,7
++	cxlftr %f5,3,%r9,7
++	cgdtra %r5,3,%f9,7
++	cgxtra %r5,3,%f9,7
++	cfdtr %r5,3,%f9,7
++	cfxtr %r5,3,%f9,7
++	clgdtr %r5,3,%f9,7
++	clgxtr %r5,3,%f9,7
++	clfdtr %r5,3,%f9,7
++	clfxtr %r5,3,%f9,7
++	ddtra %f3,%f5,%f9,7
++	dxtra %f3,%f5,%f9,7
++	mdtra %f3,%f5,%f9,7
++	mxtra %f3,%f5,%f9,7
++	sdtra %f3,%f5,%f9,7
++	sxtra %f3,%f5,%f9,7
++	srnmb 4000(%r7)
+Index: binutils-2.20.51.0.2/gas/testsuite/gas/s390/zarch-z9-109.d
+===================================================================
+--- binutils-2.20.51.0.2.orig/gas/testsuite/gas/s390/zarch-z9-109.d
++++ binutils-2.20.51.0.2/gas/testsuite/gas/s390/zarch-z9-109.d
+@@ -63,3 +63,6 @@ Disassembly of section .text:
+ .*:	ed 95 af ff 60 3a [	 ]*may	%f6,%f9,4095\(%r5,%r10\)
+ .*:	ed 95 af ff 60 3c [	 ]*mayh	%f6,%f9,4095\(%r5,%r10\)
+ .*:	ed 95 af ff 60 38 [	 ]*mayl	%f6,%f9,4095\(%r5,%r10\)
++.*:	b9 eb 00 67 [	 ]*srstu	%r6,%r7
++.*:	d0 16 5f ff ad 05 [	 ]*trtr	4095\(23,%r5\),3333\(%r10\)
++.*:	07 07 [ 	]*nopr	%r7
+\ No newline at end of file
+Index: binutils-2.20.51.0.2/gas/testsuite/gas/s390/zarch-z9-109.s
+===================================================================
+--- binutils-2.20.51.0.2.orig/gas/testsuite/gas/s390/zarch-z9-109.s
++++ binutils-2.20.51.0.2/gas/testsuite/gas/s390/zarch-z9-109.s
+@@ -57,3 +57,5 @@ foo:
+ 	may	%f6,%f9,4095(%r5,%r10)
+ 	mayh	%f6,%f9,4095(%r5,%r10)
+ 	mayl	%f6,%f9,4095(%r5,%r10)
++	srstu	%r6,%r7
++	trtr	4095(23,%r5),3333(%r10)
+Index: binutils-2.20.51.0.2/gas/testsuite/gas/s390/zarch-z9-ec.d
+===================================================================
+--- binutils-2.20.51.0.2.orig/gas/testsuite/gas/s390/zarch-z9-ec.d
++++ binutils-2.20.51.0.2/gas/testsuite/gas/s390/zarch-z9-ec.d
+@@ -73,4 +73,4 @@ Disassembly of section .text:
+ .*:	c8 31 10 0a 20 14 [	 ]*ectg	10\(%r1\),20\(%r2\),%r3
+ .*:	c8 32 10 0a 20 14 [	 ]*csst	10\(%r1\),20\(%r2\),%r3
+ # Expect 2 bytes of padding.
+-.*:	07 07 [	 ]*bcr	0,%r7
++.*:	07 07 [	 ]*nopr	%r7
+Index: binutils-2.20.51.0.2/gas/testsuite/gas/s390/zarch-z900.d
+===================================================================
+--- binutils-2.20.51.0.2.orig/gas/testsuite/gas/s390/zarch-z900.d
++++ binutils-2.20.51.0.2/gas/testsuite/gas/s390/zarch-z900.d
+@@ -146,4 +146,4 @@ Disassembly of section .text:
+ .*:	eb 96 5f ff 00 0f [ 	]*tracg	%r9,%r6,4095\(%r5\)
+ .*:	e3 95 af ff 00 82 [ 	]*xg	%r9,4095\(%r5,%r10\)
+ .*:	b9 82 00 96 [ 	]*xgr	%r9,%r6
+-.*:	07 07 [	 ]*bcr	0,%r7
+\ No newline at end of file
++.*:	07 07 [	 ]*nopr	%r7
+\ No newline at end of file
+Index: binutils-2.20.51.0.2/include/opcode/s390.h
+===================================================================
+--- binutils-2.20.51.0.2.orig/include/opcode/s390.h
++++ binutils-2.20.51.0.2/include/opcode/s390.h
+@@ -38,7 +38,9 @@ enum s390_opcode_cpu_val
+     S390_OPCODE_Z990,
+     S390_OPCODE_Z9_109,
+     S390_OPCODE_Z9_EC,
+-    S390_OPCODE_Z10
++    S390_OPCODE_Z10,
++    S390_OPCODE_Z196,
++    S390_OPCODE_MAXCPU
+   };
+ 
+ /* The opcode table is an array of struct s390_opcode.  */
+Index: binutils-2.20.51.0.2/ld/testsuite/ld-s390/tlsbin.dd
+===================================================================
+--- binutils-2.20.51.0.2.orig/ld/testsuite/ld-s390/tlsbin.dd
++++ binutils-2.20.51.0.2/ld/testsuite/ld-s390/tlsbin.dd
+@@ -76,19 +76,19 @@ Disassembly of section .text:
+   +[0-9a-f]+:	41 22 90 00       	la	%r2,0\(%r2,%r9\)
+ # GD -> LE with global variable defined in executable
+   +[0-9a-f]+:	58 20 d0 10       	l	%r2,16\(%r13\)
+-  +[0-9a-f]+:	47 00 00 00       	bc	0,0
++  +[0-9a-f]+:	47 00 00 00       	nop	0
+   +[0-9a-f]+:	41 22 90 00       	la	%r2,0\(%r2,%r9\)
+ # GD -> LE with local variable defined in executable
+   +[0-9a-f]+:	58 20 d0 14       	l	%r2,20\(%r13\)
+-  +[0-9a-f]+:	47 00 00 00       	bc	0,0
++  +[0-9a-f]+:	47 00 00 00       	nop	0
+   +[0-9a-f]+:	41 22 90 00       	la	%r2,0\(%r2,%r9\)
+ # GD -> LE with hidden variable defined in executable
+   +[0-9a-f]+:	58 20 d0 18       	l	%r2,24\(%r13\)
+-  +[0-9a-f]+:	47 00 00 00       	bc	0,0
++  +[0-9a-f]+:	47 00 00 00       	nop	0
+   +[0-9a-f]+:	41 22 90 00       	la	%r2,0\(%r2,%r9\)
+ # LD -> LE
+   +[0-9a-f]+:	58 20 d0 1c       	l	%r2,28\(%r13\)
+-  +[0-9a-f]+:	47 00 00 00       	bc	0,0
++  +[0-9a-f]+:	47 00 00 00       	nop	0
+   +[0-9a-f]+:	41 32 90 00       	la	%r3,0\(%r2,%r9\)
+   +[0-9a-f]+:	58 40 d0 20       	l	%r4,32\(%r13\)
+   +[0-9a-f]+:	41 54 30 00       	la	%r5,0\(%r4,%r3\)
+@@ -96,7 +96,7 @@ Disassembly of section .text:
+   +[0-9a-f]+:	41 54 30 00       	la	%r5,0\(%r4,%r3\)
+ # LD -> LE against hidden variables
+   +[0-9a-f]+:	58 20 d0 28       	l	%r2,40\(%r13\)
+-  +[0-9a-f]+:	47 00 00 00       	bc	0,0
++  +[0-9a-f]+:	47 00 00 00       	nop	0
+   +[0-9a-f]+:	41 32 90 00       	la	%r3,0\(%r2,%r9\)
+   +[0-9a-f]+:	58 40 d0 2c       	l	%r4,44\(%r13\)
+   +[0-9a-f]+:	41 54 30 00       	la	%r5,0\(%r4,%r3\)
+@@ -109,17 +109,17 @@ Disassembly of section .text:
+ # IE -> LE against global var defined in exec
+   +[0-9a-f]+:	58 30 d0 38       	l	%r3,56\(%r13\)
+   +[0-9a-f]+:	18 43             	lr	%r4,%r3
+-  +[0-9a-f]+:	07 00             	bcr	0,%r0
++  +[0-9a-f]+:	07 00             	nopr	%r0
+   +[0-9a-f]+:	41 54 90 00       	la	%r5,0\(%r4,%r9\)
+ # IE -> LE against local var
+   +[0-9a-f]+:	58 30 d0 3c       	l	%r3,60\(%r13\)
+   +[0-9a-f]+:	18 43             	lr	%r4,%r3
+-  +[0-9a-f]+:	07 00             	bcr	0,%r0
++  +[0-9a-f]+:	07 00             	nopr	%r0
+   +[0-9a-f]+:	41 54 90 00       	la	%r5,0\(%r4,%r9\)
+ # IE -> LE against hidden var
+   +[0-9a-f]+:	58 30 d0 40       	l	%r3,64\(%r13\)
+   +[0-9a-f]+:	18 43             	lr	%r4,%r3
+-  +[0-9a-f]+:	07 00             	bcr	0,%r0
++  +[0-9a-f]+:	07 00             	nopr	%r0
+   +[0-9a-f]+:	41 54 90 00       	la	%r5,0\(%r4,%r9\)
+ # IE against global var with small got access (no optimization)
+   +[0-9a-f]+:	58 30 c0 14       	l	%r3,20\(%r12\)
+@@ -137,14 +137,14 @@ Disassembly of section .text:
+ # function epilog
+   +[0-9a-f]+:	98 6e f0 78       	lm	%r6,%r14,120\(%r15\)
+   +[0-9a-f]+:	07 fe             	br	%r14
+-  +[0-9a-f]+:	07 07             	bcr	0,%r7
+-  +[0-9a-f]+:	07 07             	bcr	0,%r7
+-  +[0-9a-f]+:	07 07             	bcr	0,%r7
+-  +[0-9a-f]+:	07 07             	bcr	0,%r7
+-  +[0-9a-f]+:	07 07             	bcr	0,%r7
+-  +[0-9a-f]+:	07 07             	bcr	0,%r7
+-  +[0-9a-f]+:	07 07             	bcr	0,%r7
+-  +[0-9a-f]+:	07 07             	bcr	0,%r7
++  +[0-9a-f]+:	07 07             	nopr	%r7
++  +[0-9a-f]+:	07 07             	nopr	%r7
++  +[0-9a-f]+:	07 07             	nopr	%r7
++  +[0-9a-f]+:	07 07             	nopr	%r7
++  +[0-9a-f]+:	07 07             	nopr	%r7
++  +[0-9a-f]+:	07 07             	nopr	%r7
++  +[0-9a-f]+:	07 07             	nopr	%r7
++  +[0-9a-f]+:	07 07             	nopr	%r7
+ 
+ 0+[0-9a-f]+ <_start>:
+ # function prolog
+@@ -173,17 +173,17 @@ Disassembly of section .text:
+ # IE -> LE against global var defined in exec
+   +[0-9a-f]+:	58 30 d0 04       	l	%r3,4\(%r13\)
+   +[0-9a-f]+:	18 43             	lr	%r4,%r3
+-  +[0-9a-f]+:	07 00             	bcr	0,%r0
++  +[0-9a-f]+:	07 00             	nopr	%r0
+   +[0-9a-f]+:	41 54 90 00       	la	%r5,0\(%r4,%r9\)
+ # IE -> LE against local var
+   +[0-9a-f]+:	58 30 d0 08       	l	%r3,8\(%r13\)
+   +[0-9a-f]+:	18 43             	lr	%r4,%r3
+-  +[0-9a-f]+:	07 00             	bcr	0,%r0
++  +[0-9a-f]+:	07 00             	nopr	%r0
+   +[0-9a-f]+:	41 54 90 00       	la	%r5,0\(%r4,%r9\)
+ # IE -> LE against hidden but not local var
+   +[0-9a-f]+:	58 30 d0 0c       	l	%r3,12\(%r13\)
+   +[0-9a-f]+:	18 43             	lr	%r4,%r3
+-  +[0-9a-f]+:	07 00             	bcr	0,%r0
++  +[0-9a-f]+:	07 00             	nopr	%r0
+   +[0-9a-f]+:	41 54 90 00       	la	%r5,0\(%r4,%r9\)
+ # LE, global var defined in exec
+   +[0-9a-f]+:	58 40 d0 10       	l	%r4,16\(%r13\)
+Index: binutils-2.20.51.0.2/ld/testsuite/ld-s390/tlsbin_64.dd
+===================================================================
+--- binutils-2.20.51.0.2.orig/ld/testsuite/ld-s390/tlsbin_64.dd
++++ binutils-2.20.51.0.2/ld/testsuite/ld-s390/tlsbin_64.dd
+@@ -160,16 +160,16 @@ Disassembly of section .text:
+ # function epilog
+  +[0-9a-f]+:	eb 6e f0 d0 00 04 	lmg	%r6,%r14,208\(%r15\)
+  +[0-9a-f]+:	07 fe             	br	%r14
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
+ 
+ 0+[0-9a-f]+ <_start>:
+ # function prolog
+@@ -220,4 +220,4 @@ Disassembly of section .text:
+ # function epilog
+  +[0-9a-f]+:	eb 6e f0 d0 00 04 	lmg	%r6,%r14,208\(%r15\)
+  +[0-9a-f]+:	07 fe             	br	%r14
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
+Index: binutils-2.20.51.0.2/ld/testsuite/ld-s390/tlspic.dd
+===================================================================
+--- binutils-2.20.51.0.2.orig/ld/testsuite/ld-s390/tlspic.dd
++++ binutils-2.20.51.0.2/ld/testsuite/ld-s390/tlspic.dd
+@@ -159,31 +159,31 @@ Disassembly of section .text:
+ # function prolog
+  +[0-9a-f]+:	98 6e f0 78       	lm	%r6,%r14,120\(%r15\)
+  +[0-9a-f]+:	07 fe             	br	%r14
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
+Index: binutils-2.20.51.0.2/ld/testsuite/ld-s390/tlspic_64.dd
+===================================================================
+--- binutils-2.20.51.0.2.orig/ld/testsuite/ld-s390/tlspic_64.dd
++++ binutils-2.20.51.0.2/ld/testsuite/ld-s390/tlspic_64.dd
+@@ -192,11 +192,11 @@ Disassembly of section .text:
+ # function epilog
+  +[0-9a-f]+:	eb 6e f0 d0 00 04 	lmg	%r6,%r14,208\(%r15\)
+  +[0-9a-f]+:	07 fe             	br	%r14
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
+- +[0-9a-f]+:	07 07             	bcr	0,%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
++ +[0-9a-f]+:	07 07             	nopr	%r7
+Index: binutils-2.20.51.0.2/opcodes/s390-dis.c
+===================================================================
+--- binutils-2.20.51.0.2.orig/opcodes/s390-dis.c
++++ binutils-2.20.51.0.2/opcodes/s390-dis.c
+@@ -166,6 +166,8 @@ print_insn_s390 (bfd_vma memaddr, struct
+ 
+   if (status == 0)
+     {
++      const struct s390_opcode *op;
++
+       /* Find the first match in the opcode table.  */
+       opcode_end = s390_opcodes + s390_num_opcodes;
+       for (opcode = s390_opcodes + opc_index[(int) buffer[0]];
+@@ -178,6 +180,7 @@ print_insn_s390 (bfd_vma memaddr, struct
+ 	  /* Check architecture.  */
+ 	  if (!(opcode->modes & current_arch_mask))
+ 	    continue;
++
+ 	  /* Check signature of the opcode.  */
+ 	  if ((buffer[1] & opcode->mask[1]) != opcode->opcode[1]
+ 	      || (buffer[2] & opcode->mask[2]) != opcode->opcode[2]
+@@ -186,6 +189,28 @@ print_insn_s390 (bfd_vma memaddr, struct
+ 	      || (buffer[5] & opcode->mask[5]) != opcode->opcode[5])
+ 	    continue;
+ 
++	  /* Advance to an opcode with a more specific mask.  */
++	  for (op = opcode + 1; op < opcode_end; op++)
++	    {
++	      if ((buffer[0] & op->mask[0]) != op->opcode[0])
++		break;
++
++	      if ((buffer[1] & op->mask[1]) != op->opcode[1]
++		  || (buffer[2] & op->mask[2]) != op->opcode[2]
++		  || (buffer[3] & op->mask[3]) != op->opcode[3]
++		  || (buffer[4] & op->mask[4]) != op->opcode[4]
++		  || (buffer[5] & op->mask[5]) != op->opcode[5])
++		continue;
++
++	      if (((int)opcode->mask[0] + opcode->mask[1] +
++		   opcode->mask[2] + opcode->mask[3] +
++		   opcode->mask[4] + opcode->mask[5]) <
++		  ((int)op->mask[0] + op->mask[1] +
++		   op->mask[2] + op->mask[3] +
++		   op->mask[4] + op->mask[5]))
++		opcode = op;
++	    }
++
+ 	  /* The instruction is valid.  */
+ 	  if (opcode->operands[0] != 0)
+ 	    (*info->fprintf_func) (info->stream, "%s\t", opcode->name);
+Index: binutils-2.20.51.0.2/opcodes/s390-mkopc.c
+===================================================================
+--- binutils-2.20.51.0.2.orig/opcodes/s390-mkopc.c
++++ binutils-2.20.51.0.2/opcodes/s390-mkopc.c
+@@ -38,7 +38,8 @@ enum s390_opcode_cpu_val
+     S390_OPCODE_Z990,
+     S390_OPCODE_Z9_109,
+     S390_OPCODE_Z9_EC,
+-    S390_OPCODE_Z10
++    S390_OPCODE_Z10,
++    S390_OPCODE_Z196
+   };
+ 
+ struct op_struct
+@@ -334,7 +335,7 @@ main (void)
+       char  opcode[16];
+       char  mnemonic[16];
+       char  format[16];
+-      char  description[64];
++      char  description[80];
+       char  cpu_string[16];
+       char  modes_string[16];
+       int   min_cpu;
+@@ -344,7 +345,7 @@ main (void)
+       if (currentLine[0] == '#')
+         continue;
+       memset (opcode, 0, 8);
+-      if (sscanf (currentLine, "%15s %15s %15s \"%[^\"]\" %15s %15s",
++      if (sscanf (currentLine, "%15s %15s %15s \"%79[^\"]\" %15s %15s",
+ 		  opcode, mnemonic, format, description,
+ 		  cpu_string, modes_string) == 6)
+ 	{
+@@ -362,6 +363,8 @@ main (void)
+ 	    min_cpu = S390_OPCODE_Z9_EC;
+ 	  else if (strcmp (cpu_string, "z10") == 0)
+ 	    min_cpu = S390_OPCODE_Z10;
++	  else if (strcmp (cpu_string, "z196") == 0)
++	    min_cpu = S390_OPCODE_Z196;
+ 	  else {
+ 	    fprintf (stderr, "Couldn't parse cpu string %s\n", cpu_string);
+ 	    exit (1);
+@@ -390,7 +393,10 @@ main (void)
+ 	  insertExpandedMnemonic (opcode, mnemonic, format, min_cpu, mode_bits);
+ 	}
+       else
+-        fprintf (stderr, "Couldn't scan line %s\n", currentLine);
++	{
++	  fprintf (stderr, "Couldn't scan line %s\n", currentLine);
++	  exit (1);
++	}
+     }
+ 
+   dumpTable ();
+Index: binutils-2.20.51.0.2/opcodes/s390-opc.c
+===================================================================
+--- binutils-2.20.51.0.2.orig/opcodes/s390-opc.c
++++ binutils-2.20.51.0.2/opcodes/s390-opc.c
+@@ -178,7 +178,7 @@ const struct s390_operand s390_operands[
+ 
+ /* Conditional mask operands.  */
+ 
+-#define M_16   52                 /* 4 bit optional mask starting at 16 */
++#define M_16OPT   52              /* 4 bit optional mask starting at 16 */
+   { 4, 16, S390_OPERAND_OPTIONAL },
+ 
+ };
+@@ -231,6 +231,7 @@ const struct s390_operand s390_operands[
+ #define INSTR_RIE_RRP    6, { R_8,R_12,J16_16,0,0,0 }          /* e.g. brxhg */
+ #define INSTR_RIE_RRPU   6, { R_8,R_12,U4_32,J16_16,0,0 }      /* e.g. crj   */
+ #define INSTR_RIE_RRP0   6, { R_8,R_12,J16_16,0,0,0 }          /* e.g. crjne */
++#define INSTR_RIE_RRI0   6, { R_8,R_12,I16_16,0,0,0 }          /* e.g. ahik  */
+ #define INSTR_RIE_RUPI   6, { R_8,I8_32,U4_12,J16_16,0,0 }     /* e.g. cij   */
+ #define INSTR_RIE_R0PI   6, { R_8,I8_32,J16_16,0,0,0 }         /* e.g. cijne */
+ #define INSTR_RIE_RUPU   6, { R_8,U8_32,U4_12,J16_16,0,0 }     /* e.g. clij  */
+@@ -272,16 +273,20 @@ const struct s390_operand s390_operands[
+ #define INSTR_RRF_F0FF2  4, { F_24,F_16,F_28,0,0,0 }           /* e.g. cpsdr */
+ #define INSTR_RRF_F0FR   4, { F_24,F_16,R_28,0,0,0 }           /* e.g. iedtr */
+ #define INSTR_RRF_FUFF   4, { F_24,F_16,F_28,U4_20,0,0 }       /* e.g. didbr */
++#define INSTR_RRF_FUFF2  4, { F_24,F_28,F_16,U4_20,0,0 }       /* e.g. adtra */
+ #define INSTR_RRF_RURR   4, { R_24,R_28,R_16,U4_20,0,0 }       /* e.g. .insn */
+ #define INSTR_RRF_R0RR   4, { R_24,R_16,R_28,0,0,0 }           /* e.g. idte  */
++#define INSTR_RRF_R0RR2  4, { R_24,R_28,R_16,0,0,0 }           /* e.g. ark   */
+ #define INSTR_RRF_U0FF   4, { F_24,U4_16,F_28,0,0,0 }          /* e.g. fixr  */
+ #define INSTR_RRF_U0RF   4, { R_24,U4_16,F_28,0,0,0 }          /* e.g. cfebr */
+ #define INSTR_RRF_UUFF   4, { F_24,U4_16,F_28,U4_20,0,0 }      /* e.g. fidtr */
+ #define INSTR_RRF_0UFF   4, { F_24,F_28,U4_20,0,0,0 }          /* e.g. ldetr */
+ #define INSTR_RRF_FFRU   4, { F_24,F_16,R_28,U4_20,0,0 }       /* e.g. rrdtr */
+-#define INSTR_RRF_M0RR   4, { R_24,R_28,M_16,0,0,0 }           /* e.g. sske  */
++#define INSTR_RRF_M0RR   4, { R_24,R_28,M_16OPT,0,0,0 }        /* e.g. sske  */
+ #define INSTR_RRF_U0RR   4, { R_24,R_28,U4_16,0,0,0 }          /* e.g. clrt  */
+ #define INSTR_RRF_00RR   4, { R_24,R_28,0,0,0,0 }              /* e.g. clrtne */
++#define INSTR_RRF_UUFR   4, { F_24,U4_16,R_28,U4_20,0,0 }      /* e.g. cdgtra */
++#define INSTR_RRF_UURF   4, { R_24,U4_16,F_28,U4_20,0,0 }      /* e.g. cgdtra */
+ #define INSTR_RR_0R      2, { R_12, 0,0,0,0,0 }                /* e.g. br    */
+ #define INSTR_RR_0R_OPT  2, { RO_12, 0,0,0,0,0 }               /* e.g. nopr  */
+ #define INSTR_RR_FF      2, { F_8,F_12,0,0,0,0 }               /* e.g. adr   */
+@@ -301,6 +306,8 @@ const struct s390_operand s390_operands[
+ #define INSTR_RSY_RURD   6, { R_8,U4_12,D20_20,B_16,0,0 }      /* e.g. icmh  */
+ #define INSTR_RSY_AARD   6, { A_8,A_12,D20_20,B_16,0,0 }       /* e.g. lamy  */
+ #define INSTR_RSY_CCRD   6, { C_8,C_12,D20_20,B_16,0,0 }       /* e.g. lamy  */
++#define INSTR_RSY_RDRM   6, { R_8,D20_20,B_16,U4_12,0,0 }      /* e.g. loc   */
++#define INSTR_RSY_RDR0   6, { R_8,D20_20,B_16,0,0,0 }          /* e.g. loc   */
+ #define INSTR_RS_AARD    4, { A_8,A_12,D_20,B_16,0,0 }         /* e.g. lam   */
+ #define INSTR_RS_CCRD    4, { C_8,C_12,D_20,B_16,0,0 }         /* e.g. lctl  */
+ #define INSTR_RS_R0RD    4, { R_8,D_20,B_16,0,0,0 }            /* e.g. sll   */
+@@ -332,6 +339,7 @@ const struct s390_operand s390_operands[
+ #define INSTR_SS_RRRDRD2 6, { R_8,D_20,B_16,R_12,D_36,B_32 }   /* e.g. plo   */
+ #define INSTR_SS_RRRDRD3 6, { R_8,R_12,D_20,B_16,D_36,B_32 }   /* e.g. lmd   */
+ #define INSTR_SSF_RRDRD  6, { D_20,B_16,D_36,B_32,R_8,0 }      /* e.g. mvcos */
++#define INSTR_SSF_RRDRD2 6, { R_8,D_20,B_16,D_36,B_32,0 }      /* e.g. lpd   */
+ #define INSTR_S_00       4, { 0,0,0,0,0,0 }                    /* e.g. hsch  */
+ #define INSTR_S_RD       4, { D_20,B_16,0,0,0,0 }              /* e.g. lpsw  */
+ 
+@@ -339,6 +347,7 @@ const struct s390_operand s390_operands[
+ #define MASK_RIE_RRP     { 0xff, 0x00, 0x00, 0x00, 0x00, 0xff }
+ #define MASK_RIE_RRPU    { 0xff, 0x00, 0x00, 0x00, 0x00, 0xff }
+ #define MASK_RIE_RRP0    { 0xff, 0x00, 0x00, 0x00, 0xf0, 0xff }
++#define MASK_RIE_RRI0    { 0xff, 0x00, 0x00, 0x00, 0xf0, 0xff }
+ #define MASK_RIE_RUPI    { 0xff, 0x00, 0x00, 0x00, 0x00, 0xff }
+ #define MASK_RIE_R0PI    { 0xff, 0x00, 0x00, 0x00, 0xf0, 0xff }
+ #define MASK_RIE_RUPU    { 0xff, 0x00, 0x00, 0x00, 0x00, 0xff }
+@@ -378,8 +387,10 @@ const struct s390_operand s390_operands[
+ #define MASK_RRF_F0FF2   { 0xff, 0xff, 0x0f, 0x00, 0x00, 0x00 }
+ #define MASK_RRF_F0FR    { 0xff, 0xff, 0x0f, 0x00, 0x00, 0x00 }
+ #define MASK_RRF_FUFF    { 0xff, 0xff, 0x00, 0x00, 0x00, 0x00 }
++#define MASK_RRF_FUFF2   { 0xff, 0xff, 0x00, 0x00, 0x00, 0x00 }
+ #define MASK_RRF_RURR    { 0xff, 0xff, 0x00, 0x00, 0x00, 0x00 }
+ #define MASK_RRF_R0RR    { 0xff, 0xff, 0x00, 0x00, 0x00, 0x00 }
++#define MASK_RRF_R0RR2   { 0xff, 0xff, 0x00, 0x00, 0x00, 0x00 }
+ #define MASK_RRF_U0FF    { 0xff, 0xff, 0x0f, 0x00, 0x00, 0x00 }
+ #define MASK_RRF_U0RF    { 0xff, 0xff, 0x0f, 0x00, 0x00, 0x00 }
+ #define MASK_RRF_UUFF    { 0xff, 0xff, 0x00, 0x00, 0x00, 0x00 }
+@@ -388,6 +399,8 @@ const struct s390_operand s390_operands[
+ #define MASK_RRF_M0RR    { 0xff, 0xff, 0x0f, 0x00, 0x00, 0x00 }
+ #define MASK_RRF_U0RR    { 0xff, 0xff, 0x0f, 0x00, 0x00, 0x00 }
+ #define MASK_RRF_00RR    { 0xff, 0xff, 0xff, 0x00, 0x00, 0x00 }
++#define MASK_RRF_UUFR    { 0xff, 0xff, 0x00, 0x00, 0x00, 0x00 }
++#define MASK_RRF_UURF    { 0xff, 0xff, 0x00, 0x00, 0x00, 0x00 }
+ #define MASK_RR_0R       { 0xff, 0xf0, 0x00, 0x00, 0x00, 0x00 }
+ #define MASK_RR_0R_OPT   { 0xff, 0xf0, 0x00, 0x00, 0x00, 0x00 }
+ #define MASK_RR_FF       { 0xff, 0x00, 0x00, 0x00, 0x00, 0x00 }
+@@ -398,10 +411,10 @@ const struct s390_operand s390_operands[
+ #define MASK_RRR_F0FF    { 0xff, 0xff, 0x0f, 0x00, 0x00, 0x00 }
+ #define MASK_RRS_RRRDU   { 0xff, 0x00, 0x00, 0x00, 0x0f, 0xff }
+ #define MASK_RRS_RRRD0   { 0xff, 0x00, 0x00, 0x00, 0xff, 0xff }
+-#define MASK_RSE_RRRD    { 0xff, 0x00, 0x00, 0x00, 0x00, 0xff }
+-#define MASK_RSE_CCRD    { 0xff, 0x00, 0x00, 0x00, 0x00, 0xff }
+-#define MASK_RSE_RURD    { 0xff, 0x00, 0x00, 0x00, 0x00, 0xff }
+-#define MASK_RSL_R0RD    { 0xff, 0x00, 0x00, 0x00, 0x00, 0xff }
++#define MASK_RSE_RRRD    { 0xff, 0x00, 0x00, 0x00, 0xff, 0xff }
++#define MASK_RSE_CCRD    { 0xff, 0x00, 0x00, 0x00, 0xff, 0xff }
++#define MASK_RSE_RURD    { 0xff, 0x00, 0x00, 0x00, 0xff, 0xff }
++#define MASK_RSL_R0RD    { 0xff, 0x0f, 0x00, 0x00, 0xff, 0xff }
+ #define MASK_RSI_RRP     { 0xff, 0x00, 0x00, 0x00, 0x00, 0x00 }
+ #define MASK_RS_AARD     { 0xff, 0x00, 0x00, 0x00, 0x00, 0x00 }
+ #define MASK_RS_CCRD     { 0xff, 0x00, 0x00, 0x00, 0x00, 0x00 }
+@@ -412,10 +425,12 @@ const struct s390_operand s390_operands[
+ #define MASK_RSY_RURD    { 0xff, 0x00, 0x00, 0x00, 0x00, 0xff }
+ #define MASK_RSY_AARD    { 0xff, 0x00, 0x00, 0x00, 0x00, 0xff }
+ #define MASK_RSY_CCRD    { 0xff, 0x00, 0x00, 0x00, 0x00, 0xff }
+-#define MASK_RXE_FRRD    { 0xff, 0x00, 0x00, 0x00, 0x00, 0xff }
+-#define MASK_RXE_RRRD    { 0xff, 0x00, 0x00, 0x00, 0x00, 0xff }
+-#define MASK_RXF_FRRDF   { 0xff, 0x00, 0x00, 0x00, 0x00, 0xff }
+-#define MASK_RXF_RRRDR   { 0xff, 0x00, 0x00, 0x00, 0x00, 0xff }
++#define MASK_RSY_RDRM    { 0xff, 0x00, 0x00, 0x00, 0x00, 0xff }
++#define MASK_RSY_RDR0    { 0xff, 0x0f, 0x00, 0x00, 0x00, 0xff }
++#define MASK_RXE_FRRD    { 0xff, 0x00, 0x00, 0x00, 0xff, 0xff }
++#define MASK_RXE_RRRD    { 0xff, 0x00, 0x00, 0x00, 0xff, 0xff }
++#define MASK_RXF_FRRDF   { 0xff, 0x00, 0x00, 0x00, 0x0f, 0xff }
++#define MASK_RXF_RRRDR   { 0xff, 0x00, 0x00, 0x00, 0x0f, 0xff }
+ #define MASK_RXY_RRRD    { 0xff, 0x00, 0x00, 0x00, 0x00, 0xff }
+ #define MASK_RXY_FRRD    { 0xff, 0x00, 0x00, 0x00, 0x00, 0xff }
+ #define MASK_RXY_URRD    { 0xff, 0x00, 0x00, 0x00, 0x00, 0xff }
+@@ -438,6 +453,7 @@ const struct s390_operand s390_operands[
+ #define MASK_SS_RRRDRD2  { 0xff, 0x00, 0x00, 0x00, 0x00, 0x00 }
+ #define MASK_SS_RRRDRD3  { 0xff, 0x00, 0x00, 0x00, 0x00, 0x00 }
+ #define MASK_SSF_RRDRD   { 0xff, 0x0f, 0x00, 0x00, 0x00, 0x00 }
++#define MASK_SSF_RRDRD2  { 0xff, 0x0f, 0x00, 0x00, 0x00, 0x00 }
+ #define MASK_S_00        { 0xff, 0xff, 0xff, 0xff, 0x00, 0x00 }
+ #define MASK_S_RD        { 0xff, 0xff, 0x00, 0x00, 0x00, 0x00 }
+ 
+Index: binutils-2.20.51.0.2/opcodes/s390-opc.txt
+===================================================================
+--- binutils-2.20.51.0.2.orig/opcodes/s390-opc.txt
++++ binutils-2.20.51.0.2/opcodes/s390-opc.txt
+@@ -107,10 +107,10 @@ b7 lctl RS_CCRD "load control" g5 esa,za
+ 82 lpsw S_RD "load PSW" g5 esa,zarch
+ 18 lr RR_RR "load" g5 esa,zarch
+ b1 lra RX_RRRD "load real address" g5 esa,zarch
+-25 lrdr RR_FF "load rounded (ext. to long)" g5 esa,zarch
+-35 lrer RR_FF "load rounded (long to short)" g5 esa,zarch
+ 25 ldxr RR_FF "load rounded (ext. to long)" g5 esa,zarch
++25 lrdr RR_FF "load rounded (ext. to long)" g5 esa,zarch
+ 35 ledr RR_FF "load rounded (long to short)" g5 esa,zarch
++35 lrer RR_FF "load rounded (long to short)" g5 esa,zarch
+ 22 ltdr RR_FF "load and test (long)" g5 esa,zarch
+ 32 lter RR_FF "load and test (short)" g5 esa,zarch
+ 12 ltr RR_RR "load and test" g5 esa,zarch
+@@ -119,10 +119,10 @@ b24b lura RRE_RR "load using real addres
+ af mc SI_URD "monitor call" g5 esa,zarch
+ 6c md RX_FRRD "multiply (long)" g5 esa,zarch
+ 2c mdr RR_FF "multiply (long)" g5 esa,zarch
+-7c me RX_FRRD "multiply (short to long)" g5 esa,zarch
+ 7c mde RX_FRRD "multiply (short to long)" g5 esa,zarch
+-3c mer RR_FF "multiply (short to long)" g5 esa,zarch
++7c me RX_FRRD "multiply (short to long)" g5 esa,zarch
+ 3c mder RR_FF "multiply short to long hfp" g5 esa,zarch
++3c mer RR_FF "multiply (short to long)" g5 esa,zarch
+ 4c mh RX_RRRD "multiply halfword" g5 esa,zarch
+ fc mp SS_LLRDRD "multiply decimal" g5 esa,zarch
+ 1c mr RR_RR "multiply" g5 esa,zarch
+@@ -259,7 +259,9 @@ a8 mvcle RS_RRRD "move long extended" g5
+ a70c mhi RI_RI "multiply halfword immediate" g5 esa,zarch
+ b252 msr RRE_RR "multiply single" g5 esa,zarch
+ 71 ms RX_RRRD "multiply single" g5 esa,zarch
++a700 tmlh RI_RU "test under mask low high" g5 esa,zarch
+ a700 tmh RI_RU "test under mask high" g5 esa,zarch
++a701 tmll RI_RU "test under mask low low" g5 esa,zarch
+ a701 tml RI_RU "test under mask low" g5 esa,zarch
+ 0700 nopr RR_0R_OPT "no operation" g5 esa,zarch
+ 0700 b*8r RR_0R "conditional branch" g5 esa,zarch
+@@ -366,8 +368,6 @@ b277 rp S_RD "resume program" g5 esa,zar
+ b27d stsi S_RD "store system information" g5 esa,zarch
+ 01ff trap2 E "trap" g5 esa,zarch
+ b2ff trap4 S_RD "trap4" g5 esa,zarch
+-a700 tmlh RI_RU "test under mask low high" g5 esa,zarch
+-a701 tmll RI_RU "test under mask low low" g5 esa,zarch
+ b278 stcke S_RD "store clock extended" g5 esa,zarch
+ b2a5 tre RRE_RR "translate extended" g5 esa,zarch
+ eb000000008e mvclu RSE_RRRD "move long unicode" g5 esa,zarch
+@@ -419,7 +419,7 @@ e3000000000e cvbg RXE_RRRD "convert to b
+ e30000000024 stg RXE_RRRD "store 64" z900 zarch
+ e30000000080 ng RXE_RRRD "and 64" z900 zarch
+ e30000000021 clg RXE_RRRD "compare logical 64" z900 zarch
+-e30000000031 clgf RXE_RRRD "comparee logical 64<32" z900 zarch
++e30000000031 clgf RXE_RRRD "compare logical 64<32" z900 zarch
+ e30000000081 og RXE_RRRD "or 64" z900 zarch
+ e30000000082 xg RXE_RRRD "exclusive or 64" z900 zarch
+ e30000000004 lg RXE_RRRD "load 64" z900 zarch
+@@ -555,9 +555,9 @@ b369 cxr RRE_FF "compare extended hfp" g
+ b3b6 cxfr RRE_FR "convert from fixed 32 to extended hfp" g5 esa,zarch
+ b3b5 cdfr RRE_FR "convert from fixed 32 to long hfp" g5 esa,zarch
+ b3b4 cefr RRE_FR "convert from fixed 32 to short hfp" g5 esa,zarch
+-b3ba cfxr RRF_U0RF "convert to fixed extended hfp to 32" z900 esa,zarch
+-b3b9 cfdr RRF_U0RF "convert to fixed long hfp to 32" z900 esa,zarch
+-b3b8 cfer RRF_U0RF "convert to fixed short hfp to 32" z900 esa,zarch
++b3ba cfxr RRF_U0RF "convert to fixed extended hfp to 32" g5 esa,zarch
++b3b9 cfdr RRF_U0RF "convert to fixed long hfp to 32" g5 esa,zarch
++b3b8 cfer RRF_U0RF "convert to fixed short hfp to 32" g5 esa,zarch
+ b362 ltxr RRE_FF "load and test extended hfp" g5 esa,zarch
+ b363 lcxr RRE_FF "load complement extended hfp" g5 esa,zarch
+ b367 fixr RRE_FF "load fp integer extended hfp" g5 esa,zarch
+@@ -776,6 +776,8 @@ b9b2 cu41 RRE_RR "convert utf-32 to utf-
+ b2a7 cu12 RRF_M0RR "convert utf-8 to utf-16" z9-109 zarch
+ b2a7 cutfu RRF_M0RR "convert utf-8 to unicode" z9-109 zarch
+ b9b0 cu14 RRF_M0RR "convert utf-8 to utf-32" z9-109 zarch
++b9eb srstu RRE_RR "search string unicode" z9-109 zarch
++d0 trtr SS_L0RDRD "tranlate and test reverse" z9-109 zarch
+ # z9-109 unnormalized hfp multiply & multiply and add
+ b33b myr RRF_F0FF "multiply unnormalized long hfp" z9-109 zarch
+ b33d myhr RRF_F0FF "multiply unnormalized long hfp high" z9-109 zarch
+@@ -958,3 +960,136 @@ b9a2 ptf RRE_R0 "perform topology functi
+ b9af pfmf RRE_RR "perform frame management function" z10 zarch
+ b9bf trte RRF_M0RR "translate and test extended" z10 zarch
+ b9bd trtre RRF_M0RR "translate and test reverse extended" z10 zarch
++b9c8 ahhhr RRF_R0RR2 "add high high" z196 zarch
++b9d8 ahhlr RRF_R0RR2 "add high low" z196 zarch
++cc08 aih RIL_RI "add immediate high" z196 zarch
++b9ca alhhhr RRF_R0RR2 "add logical high high" z196 zarch
++b9da alhhlr RRF_R0RR2 "add logical high low" z196 zarch
++cc0a alsih RIL_RI "add logical with signed immediate high with cc" z196 zarch
++cc0b alsihn RIL_RI "add logical with signed immediate high no cc" z196 zarch
++cc06 brcth RIL_RP "branch relative on count high" z196 zarch
++b9cd chhr RRE_RR "compare high high" z196 zarch
++b9dd chlr RRE_RR "compare high low" z196 zarch
++e300000000cd chf RXY_RRRD "compare high" z196 zarch
++cc0d cih RIL_RI "compare immediate high" z196 zarch
++b9cf clhhr RRE_RR "compare logical high high" z196 zarch
++b9df clhlr RRE_RR "compare logical high low" z196 zarch
++e300000000cf clhf RXY_RRRD "compare logical high" z196 zarch
++cc0f clih RIL_RI "compare logical immediate" z196 zarch
++e300000000c0 lbh RXY_RRRD "load byte high" z196 zarch
++e300000000c4 lhh RXY_RRRD "load halfword high" z196 zarch
++e300000000ca lfh RXY_RRRD "load high" z196 zarch
++e300000000c2 llch RXY_RRRD "load logical character high" z196 zarch
++e300000000c6 llhh RXY_RRRD "load logical halfword high" z196 zarch
++ec000000005D risbhg RIE_RRUUU "rotate then insert selected bits high" z196 zarch
++ec0000000051 risblg RIE_RRUUU "rotate then insert selected bits low" z196 zarch
++e300000000c3 stch RXY_RRRD "store character high" z196 zarch
++e300000000c7 sthh RXY_RRRD "store halfword high" z196 zarch
++e300000000cb stfh RXY_RRRD "store high" z196 zarch
++b9c9 shhhr RRF_R0RR2 "subtract high high" z196 zarch
++b9d9 shhlr RRF_R0RR2 "subtract high low" z196 zarch
++b9cb slhhhr RRF_R0RR2 "subtract logical high high" z196 zarch
++b9db slhhlr RRF_R0RR2 "subtract logical high low" z196 zarch
++eb00000000f8 laa RSY_RRRD "load and add 32 bit" z196 zarch
++eb00000000e8 laag RSY_RRRD "load and add 64 bit" z196 zarch
++eb00000000fa laal RSY_RRRD "load and add logical 32 bit" z196 zarch
++eb00000000ea laalg RSY_RRRD "load and add logical 64 bit" z196 zarch
++eb00000000f4 lan RSY_RRRD "load and and 32 bit" z196 zarch
++eb00000000e4 lang RSY_RRRD "load and and 64 bit" z196 zarch
++eb00000000f7 lax RSY_RRRD "load and exclusive or 32 bit" z196 zarch
++eb00000000e7 laxg RSY_RRRD "load and exclusive or 64 bit" z196 zarch
++eb00000000f6 lao RSY_RRRD "load and or 32 bit" z196 zarch
++eb00000000e6 laog RSY_RRRD "load and or 64 bit" z196 zarch
++c804 lpd SSF_RRDRD2 "load pair disjoint 32 bit" z196 zarch
++c805 lpdg SSF_RRDRD2 "load pair disjoint 64 bit" z196 zarch
++b9f2 locr RRF_U0RR "load on condition 32 bit" z196 zarch
++b9f200000000 locr*16 RRF_00RR "load on condition 32 bit" z196 zarch
++b9e2 locgr RRF_U0RR "load on condition 64  bit" z196 zarch
++b9e200000000 locgr*16 RRF_00RR "load on condition 64  bit" z196 zarch
++eb00000000f2 loc RSY_RDRM "load on condition 32 bit" z196 zarch
++eb00000000f2 loc*12 RSY_RDR0 "load on condition 32 bit" z196 zarch
++eb00000000e2 locg RSY_RDRM "load on condition 64 bit" z196 zarch
++eb00000000e2 locg*12 RSY_RDR0 "load on condition 64 bit" z196 zarch
++eb00000000f3 stoc RSY_RDRM "store on condition 32 bit" z196 zarch
++eb00000000f3 stoc*12 RSY_RDR0 "store on condition 32 bit" z196 zarch
++eb00000000e3 stocg RSY_RDRM "store on condition 64 bit" z196 zarch
++eb00000000e3 stocg*12 RSY_RDR0 "store on condition 64 bit" z196 zarch
++b9f8 ark RRF_R0RR2 "add 3 operands 32 bit" z196 zarch
++b9e8 agrk RRF_R0RR2 "add 3 operands 64 bit" z196 zarch
++ec00000000d8 ahik RIE_RRI0 "add immediate 3 operands 32 bit" z196 zarch
++ec00000000d9 aghik RIE_RRI0 "add immediate 3 operands 64 bit" z196 zarch
++b9fa alrk RRF_R0RR2 "add logical 3 operands 32 bit" z196 zarch
++b9ea algrk RRF_R0RR2 "add logical 3 operands 64 bit" z196 zarch
++ec00000000da alhsik RIE_RRI0 "add logical immediate 3 operands 32 bit" z196 zarch
++ec00000000db alghsik RIE_RRI0 "add logical immediate 3 operands 64 bit" z196 zarch
++b9f4 nrk RRF_R0RR2 "and 3 operands 32 bit" z196 zarch
++b9e4 ngrk RRF_R0RR2 "and 3 operands 64 bit" z196 zarch
++b9f7 xrk RRF_R0RR2 "xor 3 operands 32 bit" z196 zarch
++b9e7 xgrk RRF_R0RR2 "xor 3 operands 64 bit" z196 zarch
++b9f6 ork RRF_R0RR2 "or 3 operands 32 bit" z196 zarch
++b9e6 ogrk RRF_R0RR2 "or 3 operands 64 bit" z196 zarch
++eb00000000dd slak RSY_RRRD "shift left single 3 operands 32 bit" z196 zarch
++eb00000000df sllk RSY_RRRD "shift left single logical 3 operands 32 bit" z196 zarch
++eb00000000dc srak RSY_RRRD "shift right single 3 operands 32 bit" z196 zarch
++eb00000000de srlk RSY_RRRD "shift right single logical 3 operands 32 bit" z196 zarch
++b9f9 srk RRF_R0RR2 "subtract 3 operands 32 bit" z196 zarch
++b9e9 sgrk RRF_R0RR2 "subtract 3 operands 64 bit" z196 zarch
++b9fb slrk RRF_R0RR2 "subtract logical 3 operands 32 bit" z196 zarch
++b9eb slgrk RRF_R0RR2 "subtract logical 3 operands 64 bit" z196 zarch
++b9e1 popcnt RRE_RR "population count" z196 zarch
++b9ae rrbm RRE_RR "reset reference bits multiple" z196 zarch
++b394 cefbra RRF_UUFR "convert from 32 bit fixed to short bfp with rounding mode" z196 zarch
++b395 cdfbra RRF_UUFR "convert from 32 bit fixed to long bfp with rounding mode" z196 zarch
++b396 cxfbra RRF_UUFR "convert from 32 bit fixed to extended bfp with rounding mode" z196 zarch
++b3a4 cegbra RRF_UUFR "convert from 64 bit fixed to short bfp with rounding mode" z196 zarch
++b3a5 cdgbra RRF_UUFR "convert from 64 bit fixed to long bfp with rounding mode" z196 zarch
++b3a6 cxgbra RRF_UUFR "convert from 64 bit fixed to extended bfp with rounding mode" z196 zarch
++b390 celfbr RRF_UUFR "convert from 32 bit logical fixed to short bfp with rounding mode" z196 zarch
++b391 cdlfbr RRF_UUFR "convert from 32 bit logical fixed to long bfp with rounding mode" z196 zarch
++b392 cxlfbr RRF_UUFR "convert from 32 bit logical fixed to extended bfp with rounding mode" z196 zarch
++b3a0 celgbr RRF_UUFR "convert from 64 bit logical fixed to short bfp with rounding mode" z196 zarch
++b3a1 cdlgbr RRF_UUFR "convert from 64 bit logical fixed to long bfp with rounding mode" z196 zarch
++b3a2 cxlgbr RRF_UUFR "convert from 64 bit logical fixed to extended bfp with rounding mode" z196 zarch
++b398 cfebra RRF_UURF "convert to 32 bit fixed from short bfp with rounding mode" z196 zarch
++b399 cfdbra RRF_UURF "convert to 32 bit fixed from long bfp with rounding mode" z196 zarch
++b39a cfxbra RRF_UURF "convert to 32 bit fixed from extended bfp with rounding mode" z196 zarch
++b3a8 cgebra RRF_UURF "convert to 64 bit fixed from short bfp with rounding mode" z196 zarch
++b3a9 cgdbra RRF_UURF "convert to 64 bit fixed from long bfp with rounding mode" z196 zarch
++b3aa cgxbra RRF_UURF "convert to 64 bit fixed from extended bfp with rounding mode" z196 zarch
++b39c clfebr RRF_UURF "convert to 32 bit fixed logical from short bfp with rounding mode" z196 zarch
++b39d clfdbr RRF_UURF "convert to 32 bit fixed logical from long bfp with rounding mode" z196 zarch
++b39e clfxbr RRF_UURF "convert to 32 bit fixed logical from extended bfp with rounding mode" z196 zarch
++b3ac clgebr RRF_UURF "convert to 64 bit fixed logical from short bfp with rounding mode" z196 zarch
++b3ad clgdbr RRF_UURF "convert to 64 bit fixed logical from long bfp with rounding mode" z196 zarch
++b3ae clgxbr RRF_UURF "convert to 64 bit fixed logical from extended bfp with rounding mode" z196 zarch
++b357 fiebra RRF_UUFF "load fp integer short bfp with rounding mode" z196 zarch
++b35f fidbra RRF_UUFF "load fp integer long bfp with rounding mode" z196 zarch
++b347 fixbra RRF_UUFF "load fp integer extended bfp with rounding mode" z196 zarch
++b344 ledbra RRF_UUFF "load rounded short/long bfp to short/long bfp with rounding mode" z196 zarch
++b345 ldxbra RRF_UUFF "load rounded long/extended bfp to long/extended bfp with rounding mode" z196 zarch
++b346 lexbra RRF_UUFF "load rounded short/extended bfp to short/extended bfp with rounding mode" z196 zarch
++b3d2 adtra RRF_FUFF2 "add long dfp with rounding mode" z196 zarch
++b3da axtra RRF_FUFF2 "add extended dfp with rounding mode" z196 zarch
++b3f1 cdgtra RRF_UUFR "convert from fixed long dfp with rounding mode" z196 zarch
++b951 cdftr RRF_UUFR "convert from 32 bit fixed to long dfp with rounding mode" z196 zarch
++b959 cxftr RRF_UUFR "convert from 32 bit fixed to extended dfp with rounding mode" z196 zarch
++b3f9 cxgtra RRF_UUFR "convert from fixed extended dfp with rounding mode" z196 zarch
++b952 cdlgtr RRF_UUFR "convert from 64 bit fixed logical to long dfp with rounding mode" z196 zarch
++b95a cxlgtr RRF_UUFR "convert from 64 bit fixed logical to extended dfp with rounding mode" z196 zarch
++b953 cdlftr RRF_UUFR "convert from 32 bit fixed logical to long dfp with rounding mode" z196 zarch
++b95b cxlftr RRF_UUFR "convert from 32 bit fixed logical to extended dfp with rounding mode" z196 zarch
++b3e1 cgdtra RRF_UURF "convert to 64 bit fixed from long dfp with rounding mode" z196 zarch
++b3e9 cgxtra RRF_UURF "convert to 64 bit fixed from extended dfp with rounding mode" z196 zarch
++b941 cfdtr RRF_UURF "convert to 32 bit fixed from long dfp source with rounding mode" z196 zarch
++b949 cfxtr RRF_UURF "convert to 32 bit fixed from extended dfp source with rounding mode" z196 zarch
++b942 clgdtr RRF_UURF "convert to 64 bit fixed logical from long dfp with rounding mode" z196 zarch
++b94a clgxtr RRF_UURF "convert to 64 bit fixed logical from extended dfp with rounding mode" z196 zarch
++b943 clfdtr RRF_UURF "convert to 32 bit fixed logical from long dfp with rounding mode" z196 zarch
++b94b clfxtr RRF_UURF "convert to 32 bit fixed logical from extended dfp with rounding mode" z196 zarch
++b3d1 ddtra RRF_FUFF2 "divide long dfp with rounding mode" z196 zarch
++b3d9 dxtra RRF_FUFF2 "divide extended dfp with rounding mode" z196 zarch
++b3d0 mdtra RRF_FUFF2 "multiply long dfp with rounding mode" z196 zarch
++b3d8 mxtra RRF_FUFF2 "multiply extended dfp with rounding mode" z196 zarch
++b3d3 sdtra RRF_FUFF2 "subtract long dfp with rounding mode" z196 zarch
++b3db sxtra RRF_FUFF2 "subtract extended dfp with rounding mode" z196 zarch
++b2b8 srnmb S_RD "set 3 bit bfp rounding mode" z196 zarch

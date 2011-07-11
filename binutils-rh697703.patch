@@ -1,0 +1,19 @@
+bfd/
+2011-04-19  Jan Kratochvil  <jan.kratochvil@redhat.com>
+
+	* elf-bfd.h (RELOC_AGAINST_DISCARDED_SECTION): Fix +1 overrun of
+	memmove elements.
+
+[ rediffed ]
+
+--- binutils-2.20.51.0.2/bfd/elf-bfd.h.orig	2011-04-20 00:07:03.000000000 +0200
++++ binutils-2.20.51.0.2/bfd/elf-bfd.h	2011-04-20 00:07:19.000000000 +0200
+@@ -2349,7 +2349,7 @@ extern asection _bfd_elf_large_com_secti
+ 	    rel_hdr = &elf_section_data (input_section)->rel_hdr;	\
+ 	    rel_hdr->sh_size -= rel_hdr->sh_entsize;			\
+ 									\
+-	    memmove (rel, rel + 1, (relend - rel) * sizeof (*rel));	\
++	    memmove (rel, rel + 1, (relend - rel - 1) * sizeof (*rel));	\
+ 									\
+ 	    input_section->reloc_count--;				\
+ 	    relend--;							\

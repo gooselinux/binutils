@@ -1,0 +1,385 @@
+2010-07-20  Alan Modra  <amodra@gmail.com>
+
+include/elf/
+	* internal.h (ELF_TBSS_SPECIAL): New macro, extracted from..
+	(ELF_SECTION_SIZE): ..here.
+	(ELF_SECTION_IN_SEGMENT_1): Add "strict" arg.
+	(ELF_SECTION_IN_SEGMENT_STRICT): New macro.
+bfd/
+	* elf.c (assign_file_positions_for_load_sections): Check that
+	zero size sections are allocated in segments too.
+	(assign_file_positions_for_non_load_sections): Warn if zero
+	size alloc sections are found here.
+	(copy_elf_program_header): Don't drop zero size sections from
+	segment map.
+	(copy_private_bfd_data): Check for changes in zero size sections.
+binutils/
+	* readelf.c (process_program_headers): Don't ignore all zero size
+	sections.
+ld/testsuite/
+	* ld-powerpc/tlsexe.r: Update.
+	* ld-powerpc/tlsexetoc.r: Update.
+	* ld-powerpc/tlsso.r: Update.
+	* ld-powerpc/tlstocso.r: Update.
+
+2010-04-23  Alan Modra  <amodra@gmail.com>
+
+include/elf/
+	* internal.h (ELF_SECTION_SIZE): Protect macro args with parentheses.
+	Invert logic to clarify test for .tbss.
+	(ELF_IS_SECTION_IN_SEGMENT): Rename to..
+	(ELF_SECTION_IN_SEGMENT_1): ..this.  Add check_vma param.  Protect
+	macro args with parentheses.
+	(ELF_SECTION_IN_SEGMENT): Define.
+	(ELF_IS_SECTION_IN_SEGMENT_FILE): Delete.
+	(ELF_IS_SECTION_IN_SEGMENT_MEMORY): Delete.
+bfd/
+	* elf.c: Replace use of ELF_IS_SECTION_IN_SEGMENT and
+	ELF_IS_SECTION_IN_SEGMENT_FILE with ELF_SECTION_IN_SEGMENT
+	throughout file.
+	(assign_file_positions_for_load_sections): Modify section in
+	segment warning to ignore overlay vmas.
+	* elf32-spu.c (spu_elf_object_p): Replace use of
+	ELF_IS_SECTION_IN_SEGMENT_MEMORY with ELF_SECTION_IN_SEGMENT.
+binutils/
+	* readelf.c (process_program_headers): Replace use of
+	ELF_IS_SECTION_IN_SEGMENT_MEMORY with ELF_SECTION_IN_SEGMENT.
+
+2010-04-08  David Stubbs  <stubbs@icerasemi.com>
+
+	* internal.h (ELF_IS_SECTION_IN_SEGMENT): PT_PHDR program headers
+	cannot contain any sections.
+
+2010-03-17  Jie Zhang  <jie@codesourcery.com>
+
+	* elf.c (assign_file_positions_for_load_sections): Avoid
+	overflow.
+
+2010-02-05  Sterling Augustine  <sterling@tensilica.com>
+
+	* elf.c (assign_file_positions_for_load_sections) Update lma of
+	section	if necessary.  Fixes Bugzilla 11219.
+
+Index: binutils-2.20.51.0.2/bfd/elf.c
+===================================================================
+--- binutils-2.20.51.0.2.orig/bfd/elf.c
++++ binutils-2.20.51.0.2/bfd/elf.c
+@@ -980,7 +980,7 @@ _bfd_elf_make_section_from_shdr (bfd *ab
+       for (i = 0; i < elf_elfheader (abfd)->e_phnum; i++, phdr++)
+ 	{
+ 	  if (phdr->p_type == PT_LOAD
+-	      && ELF_IS_SECTION_IN_SEGMENT (hdr, phdr))
++	      && ELF_SECTION_IN_SEGMENT (hdr, phdr))
+ 	    {
+ 	      if ((flags & SEC_LOAD) == 0)
+ 		newsect->lma = (phdr->p_paddr
+@@ -4553,7 +4553,7 @@ assign_file_positions_for_load_sections 
+ 	    {
+ 	      bfd_signed_vma adjust = sec->vma - (p->p_vaddr + p->p_memsz);
+ 
+-	      if (adjust < 0)
++	      if (sec->vma < p->p_vaddr + p->p_memsz)
+ 		{
+ 		  (*_bfd_error_handler)
+ 		    (_("%B: section %A vma 0x%lx overlaps previous sections"),
+@@ -4562,6 +4562,22 @@ assign_file_positions_for_load_sections 
+ 		}
+ 	      p->p_memsz += adjust;
+ 
++	      if (p->p_paddr + p->p_memsz != sec->lma)
++		{
++		  /* This behavior is a compromise--ld has long
++		     silently changed the lma of sections when
++		     lma - vma is not equal for every section in a
++		     pheader--but only in the internal elf structures.
++		     Silently changing the lma is probably a bug, but
++		     changing it would have subtle and unknown
++		     consequences for existing scripts.
++
++		     Instead modify the bfd data structure to reflect
++		     what happened.  This at least fixes the values
++		     for the lma in the mapfile.  */
++		  sec->lma = p->p_paddr + p->p_memsz;
++		}
++
+ 	      if (this_hdr->sh_type != SHT_NOBITS)
+ 		{
+ 		  off += adjust;
+@@ -4640,24 +4656,39 @@ assign_file_positions_for_load_sections 
+       /* Check that all sections are in a PT_LOAD segment.
+ 	 Don't check funky gdb generated core files.  */
+       if (p->p_type == PT_LOAD && bfd_get_format (abfd) != bfd_core)
+-	for (i = 0, secpp = m->sections; i < m->count; i++, secpp++)
+-	  {
+-	    Elf_Internal_Shdr *this_hdr;
+-	    asection *sec;
++	{
++	  bfd_boolean check_vma = TRUE;
+ 
+-	    sec = *secpp;
+-	    this_hdr = &(elf_section_data(sec)->this_hdr);
+-	    if (this_hdr->sh_size != 0
+-		&& !ELF_IS_SECTION_IN_SEGMENT_FILE (this_hdr, p))
++	  for (i = 1; i < m->count; i++)
++	    if (m->sections[i]->vma == m->sections[i - 1]->vma
++		&& ELF_SECTION_SIZE (&(elf_section_data (m->sections[i])
++				       ->this_hdr), p) != 0
++		&& ELF_SECTION_SIZE (&(elf_section_data (m->sections[i - 1])
++				       ->this_hdr), p) != 0)
+ 	      {
+-		(*_bfd_error_handler)
+-		  (_("%B: section `%A' can't be allocated in segment %d"),
+-		   abfd, sec, j);
+-		print_segment_map (m);
++		/* Looks like we have overlays packed into the segment.  */
++		check_vma = FALSE;
++		break;
++	      }
++
++	  for (i = 0; i < m->count; i++)
++	    {
++	      Elf_Internal_Shdr *this_hdr;
++	      asection *sec;
++
++	      sec = m->sections[i];
++	      this_hdr = &(elf_section_data(sec)->this_hdr);
++	      if (!ELF_SECTION_IN_SEGMENT_1 (this_hdr, p, check_vma, 0))
++		{
++		  (*_bfd_error_handler)
++		    (_("%B: section `%A' can't be allocated in segment %d"),
++		     abfd, sec, j);
++		  print_segment_map (m);
+ 		bfd_set_error (bfd_error_bad_value);
+ 		return FALSE;
+-	      }
+-	  }
++		}
++	    }
++	}
+     }
+ 
+   elf_tdata (abfd)->next_file_pos = off;
+@@ -4699,13 +4730,12 @@ assign_file_positions_for_non_load_secti
+ 	BFD_ASSERT (hdr->sh_offset == hdr->bfd_section->filepos);
+       else if ((hdr->sh_flags & SHF_ALLOC) != 0)
+ 	{
+-	  if (hdr->sh_size != 0)
+-	    ((*_bfd_error_handler)
+-	     (_("%B: warning: allocated section `%s' not in segment"),
+-	      abfd,
+-	      (hdr->bfd_section == NULL
+-	       ? "*unknown*"
+-	       : hdr->bfd_section->name)));
++	  (*_bfd_error_handler)
++	    (_("%B: warning: allocated section `%s' not in segment"),
++	     abfd,
++	     (hdr->bfd_section == NULL
++	      ? "*unknown*"
++	      : hdr->bfd_section->name));
+ 	  /* We don't need to page align empty sections.  */
+ 	  if ((abfd->flags & D_PAGED) != 0 && hdr->sh_size != 0)
+ 	    off += vma_page_aligned_bias (hdr->sh_addr, off,
+@@ -5931,7 +5961,7 @@ copy_elf_program_header (bfd *ibfd, bfd 
+ 	   section = section->next)
+ 	{
+ 	  this_hdr = &(elf_section_data(section)->this_hdr);
+-	  if (ELF_IS_SECTION_IN_SEGMENT_FILE (this_hdr, segment))
++	  if (ELF_SECTION_IN_SEGMENT (this_hdr, segment))
+ 	    {
+ 	      if (!first_section)
+ 		first_section = lowest_section = section;
+@@ -6010,7 +6040,7 @@ copy_elf_program_header (bfd *ibfd, bfd 
+ 	       section = section->next)
+ 	    {
+ 	      this_hdr = &(elf_section_data(section)->this_hdr);
+-	      if (ELF_IS_SECTION_IN_SEGMENT_FILE (this_hdr, segment))
++	      if (ELF_SECTION_IN_SEGMENT (this_hdr, segment))
+ 		{
+ 		  map->sections[isec++] = section->output_section;
+ 		  if (isec == section_count)
+@@ -6087,7 +6117,7 @@ copy_private_bfd_data (bfd *ibfd, bfd *o
+ 
+ 	      /* Check if this section is covered by the segment.  */
+ 	      this_hdr = &(elf_section_data(section)->this_hdr);
+-	      if (ELF_IS_SECTION_IN_SEGMENT_FILE (this_hdr, segment))
++	      if (ELF_SECTION_IN_SEGMENT (this_hdr, segment))
+ 		{
+ 		  /* FIXME: Check if its output section is changed or
+ 		     removed.  What else do we need to check?  */
+Index: binutils-2.20.51.0.2/bfd/elf32-spu.c
+===================================================================
+--- binutils-2.20.51.0.2.orig/bfd/elf32-spu.c
++++ binutils-2.20.51.0.2/bfd/elf32-spu.c
+@@ -272,7 +272,8 @@ spu_elf_object_p (bfd *abfd)
+ 	      {
+ 		Elf_Internal_Shdr *shdr = elf_elfsections (abfd)[j];
+ 
+-		if (ELF_IS_SECTION_IN_SEGMENT_MEMORY (shdr, phdr))
++		if (ELF_SECTION_SIZE (shdr, phdr) != 0
++		    && ELF_SECTION_IN_SEGMENT (shdr, phdr))
+ 		  {
+ 		    asection *sec = shdr->bfd_section;
+ 		    spu_elf_section_data (sec)->u.o.ovl_index = num_ovl;
+Index: binutils-2.20.51.0.2/binutils/readelf.c
+===================================================================
+--- binutils-2.20.51.0.2.orig/binutils/readelf.c
++++ binutils-2.20.51.0.2/binutils/readelf.c
+@@ -3636,7 +3636,8 @@ process_program_headers (FILE * file)
+ 
+ 	  for (j = 1; j < elf_header.e_shnum; j++, section++)
+ 	    {
+-	      if (ELF_IS_SECTION_IN_SEGMENT_MEMORY (section, segment))
++	      if (!ELF_TBSS_SPECIAL (section, segment)
++		  && ELF_SECTION_IN_SEGMENT_STRICT (section, segment))
+ 		printf ("%s ", SECTION_NAME (section));
+ 	    }
+ 
+Index: binutils-2.20.51.0.2/include/elf/internal.h
+===================================================================
+--- binutils-2.20.51.0.2.orig/include/elf/internal.h
++++ binutils-2.20.51.0.2/include/elf/internal.h
+@@ -292,43 +292,56 @@ struct elf_segment_map
+ 
+ /* .tbss is special.  It doesn't contribute memory space to normal
+    segments and it doesn't take file space in normal segments.  */
++#define ELF_TBSS_SPECIAL(sec_hdr, segment)			\
++  (((sec_hdr)->sh_flags & SHF_TLS) != 0				\
++   && (sec_hdr)->sh_type == SHT_NOBITS				\
++   && (segment)->p_type != PT_TLS)
++
+ #define ELF_SECTION_SIZE(sec_hdr, segment)			\
+-   (((sec_hdr->sh_flags & SHF_TLS) == 0				\
+-     || sec_hdr->sh_type != SHT_NOBITS				\
+-     || segment->p_type == PT_TLS) ? sec_hdr->sh_size : 0)
+-
+-/* Decide if the given sec_hdr is in the given segment.  PT_TLS segment
+-   contains only SHF_TLS sections.  Only PT_LOAD, PT_GNU_RELRO and
+-   and PT_TLS segments can contain SHF_TLS sections.  */
+-#define ELF_IS_SECTION_IN_SEGMENT(sec_hdr, segment)			\
+-  (((((sec_hdr->sh_flags & SHF_TLS) != 0)				\
+-     && (segment->p_type == PT_TLS					\
+-	 || segment->p_type == PT_GNU_RELRO				\
+-	 || segment->p_type == PT_LOAD))				\
+-    || ((sec_hdr->sh_flags & SHF_TLS) == 0				\
+-	&& segment->p_type != PT_TLS))					\
+-   /* Any section besides one of type SHT_NOBITS must have a file	\
+-      offset within the segment.  */					\
+-   && (sec_hdr->sh_type == SHT_NOBITS					\
+-       || ((bfd_vma) sec_hdr->sh_offset >= segment->p_offset		\
+-	   && (sec_hdr->sh_offset + ELF_SECTION_SIZE(sec_hdr, segment)	\
+-	       <= segment->p_offset + segment->p_filesz)))		\
+-   /* SHF_ALLOC sections must have VMAs within the segment.  Be		\
+-      careful about segments right at the end of memory.  */		\
+-   && ((sec_hdr->sh_flags & SHF_ALLOC) == 0				\
+-       || (sec_hdr->sh_addr >= segment->p_vaddr				\
+-	   && (sec_hdr->sh_addr - segment->p_vaddr			\
+-	       + ELF_SECTION_SIZE(sec_hdr, segment) <= segment->p_memsz))))
+-
+-/* Decide if the given sec_hdr is in the given segment in file.  */
+-#define ELF_IS_SECTION_IN_SEGMENT_FILE(sec_hdr, segment)	\
+-  (sec_hdr->sh_size > 0						\
+-   && ELF_IS_SECTION_IN_SEGMENT (sec_hdr, segment))
+-
+-/* Decide if the given sec_hdr is in the given segment in memory.  */
+-#define ELF_IS_SECTION_IN_SEGMENT_MEMORY(sec_hdr, segment)	\
+-  (ELF_SECTION_SIZE(sec_hdr, segment) > 0			\
+-   && ELF_IS_SECTION_IN_SEGMENT (sec_hdr, segment))
++  (ELF_TBSS_SPECIAL(sec_hdr, segment) ? 0 : (sec_hdr)->sh_size)
++
++/* Decide if the section SEC_HDR is in SEGMENT.  If CHECK_VMA, then
++   VMAs are checked for alloc sections.  If STRICT, then a zero size
++   section won't match at the end of a segment, unless the segment
++   is also zero size.  */
++#define ELF_SECTION_IN_SEGMENT_1(sec_hdr, segment, check_vma, strict)	\
++  ((/* Only PT_LOAD, PT_GNU_RELRO and PT_TLS segments can contain	\
++       SHF_TLS sections.  */						\
++    ((((sec_hdr)->sh_flags & SHF_TLS) != 0)				\
++     && ((segment)->p_type == PT_TLS					\
++	 || (segment)->p_type == PT_GNU_RELRO				\
++	 || (segment)->p_type == PT_LOAD))				\
++    /* PT_TLS segment contains only SHF_TLS sections, PT_PHDR no	\
++       sections at all.  */						\
++    || (((sec_hdr)->sh_flags & SHF_TLS) == 0				\
++	&& (segment)->p_type != PT_TLS					\
++	&& (segment)->p_type != PT_PHDR))				\
++   /* Any section besides one of type SHT_NOBITS must have file		\
++      offsets within the segment.  */					\
++   && ((sec_hdr)->sh_type == SHT_NOBITS					\
++       || ((bfd_vma) (sec_hdr)->sh_offset >= (segment)->p_offset	\
++	   && (!(strict)						\
++	       || ((sec_hdr)->sh_offset - (segment)->p_offset		\
++		   <= (segment)->p_filesz - 1))				\
++	   && (((sec_hdr)->sh_offset - (segment)->p_offset		\
++		+ ELF_SECTION_SIZE(sec_hdr, segment))			\
++	       <= (segment)->p_filesz)))				\
++   /* SHF_ALLOC sections must have VMAs within the segment.  */		\
++   && (!(check_vma)							\
++       || ((sec_hdr)->sh_flags & SHF_ALLOC) == 0			\
++       || ((sec_hdr)->sh_addr >= (segment)->p_vaddr			\
++	   && (!(strict)						\
++	       || ((sec_hdr)->sh_addr - (segment)->p_vaddr		\
++		   <= (segment)->p_memsz - 1))				\
++	   && (((sec_hdr)->sh_addr - (segment)->p_vaddr			\
++		+ ELF_SECTION_SIZE(sec_hdr, segment))			\
++	       <= (segment)->p_memsz))))
++
++#define ELF_SECTION_IN_SEGMENT(sec_hdr, segment)			\
++  (ELF_SECTION_IN_SEGMENT_1 (sec_hdr, segment, 1, 0))
++
++#define ELF_SECTION_IN_SEGMENT_STRICT(sec_hdr, segment)			\
++  (ELF_SECTION_IN_SEGMENT_1 (sec_hdr, segment, 1, 1))
+ 
+ /* The gap in section indices created by the older linker before
+    bug fix for PR ld/5900.  */
+Index: binutils-2.20.51.0.2/ld/testsuite/ld-powerpc/tlsexe.r
+===================================================================
+--- binutils-2.20.51.0.2.orig/ld/testsuite/ld-powerpc/tlsexe.r
++++ binutils-2.20.51.0.2/ld/testsuite/ld-powerpc/tlsexe.r
+@@ -47,7 +47,7 @@ Program Headers:
+  +0+ +
+  +01 +\.interp 
+  +02 +\.interp \.hash \.dynsym \.dynstr \.rela\.dyn \.rela\.plt \.text 
+- +03 +\.tdata \.dynamic \.got \.plt 
++ +03 +\.tdata \.dynamic (\.branch_lt |)\.got \.plt 
+  +04 +\.dynamic 
+  +05 +\.tdata \.tbss 
+ 
+Index: binutils-2.20.51.0.2/ld/testsuite/ld-powerpc/tlsexetoc.r
+===================================================================
+--- binutils-2.20.51.0.2.orig/ld/testsuite/ld-powerpc/tlsexetoc.r
++++ binutils-2.20.51.0.2/ld/testsuite/ld-powerpc/tlsexetoc.r
+@@ -47,7 +47,7 @@ Program Headers:
+  +0+ +
+  +01 +\.interp 
+  +02 +\.interp \.hash \.dynsym \.dynstr \.rela\.dyn \.rela\.plt \.text 
+- +03 +\.tdata \.dynamic \.got \.plt 
++ +03 +\.tdata \.dynamic (\.branch_lt |)\.got \.plt 
+  +04 +\.dynamic 
+  +05 +\.tdata \.tbss 
+ 
+Index: binutils-2.20.51.0.2/ld/testsuite/ld-powerpc/tlsso.r
+===================================================================
+--- binutils-2.20.51.0.2.orig/ld/testsuite/ld-powerpc/tlsso.r
++++ binutils-2.20.51.0.2/ld/testsuite/ld-powerpc/tlsso.r
+@@ -40,7 +40,7 @@ Program Headers:
+  Section to Segment mapping:
+  +Segment Sections\.\.\.
+  +0+ +\.hash \.dynsym \.dynstr \.rela\.dyn \.rela\.plt \.text 
+- +01 +\.tdata \.dynamic \.got \.plt 
++ +01 +\.tdata \.dynamic (\.branch_lt |)\.got \.plt 
+  +02 +\.dynamic 
+  +03 +\.tdata \.tbss 
+ 
+Index: binutils-2.20.51.0.2/ld/testsuite/ld-powerpc/tlstocso.r
+===================================================================
+--- binutils-2.20.51.0.2.orig/ld/testsuite/ld-powerpc/tlstocso.r
++++ binutils-2.20.51.0.2/ld/testsuite/ld-powerpc/tlstocso.r
+@@ -40,7 +40,7 @@ Program Headers:
+  Section to Segment mapping:
+  +Segment Sections\.\.\.
+  +0+ +\.hash \.dynsym \.dynstr \.rela\.dyn \.rela\.plt \.text 
+- +01 +\.tdata \.dynamic \.got \.plt 
++ +01 +\.tdata \.dynamic (\.branch_lt |)\.got \.plt 
+  +02 +\.dynamic 
+  +03 +\.tdata \.tbss 
+ 
